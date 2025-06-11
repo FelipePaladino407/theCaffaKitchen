@@ -2,7 +2,7 @@ package Clases.Herramientas;
 
 import java.util.concurrent.Semaphore;
 
-public abstract class Herramienta {
+public abstract class Herramienta implements IHerramienta {
 
     protected final String nombre;
     protected final Semaphore disponibilidad;
@@ -15,6 +15,7 @@ public abstract class Herramienta {
     /**
      * usar() es el equivalente a "p" que haciamos a papel.
      */
+    @Override
     public void pedir() throws InterruptedException {
         disponibilidad.acquire();
         System.out.println(nombre + " se esta utilizando");
@@ -24,11 +25,13 @@ public abstract class Herramienta {
     /**
      * liberar() es el equivalente a "v" que haciamos a papel.
      */
+    @Override
     public void liberar(){
         disponibilidad.release();
         System.out.println(nombre + " se ha liberado");
     }
 
+    @Override
     public String getNombre() {
         return nombre;
     }
