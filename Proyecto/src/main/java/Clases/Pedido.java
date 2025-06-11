@@ -1,4 +1,6 @@
 package Clases;
+import Clases.Herramientas.Herramienta;
+
 import java.util.ArrayList;
 
 public class Pedido {

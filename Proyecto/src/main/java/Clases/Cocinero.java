@@ -1,5 +1,7 @@
 package Clases;
 
+import Clases.Herramientas.Herramienta;
+
 import java.util.List;
 
 public class Cocinero {
