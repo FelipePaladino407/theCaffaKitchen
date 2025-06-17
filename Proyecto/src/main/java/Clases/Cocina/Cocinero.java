@@ -8,33 +8,29 @@ import java.util.concurrent.Semaphore;
 public class Cocinero extends Thread {
     private final String nombre;
     private Pedido pedidoActual;
-    private final Semaphore semaforo = new Semaphore(0); // empieza bloqueado
+    private final Semaphore semaforo = new Semaphore(0); // para esperar pedidos
+    private boolean ocupado = false;
 
     public Cocinero(String nombre) {
         this.nombre = nombre;
     }
 
+    public synchronized boolean estaOcupado() {
+        return ocupado;
+    }
 
-
-    // El jefe llama a esto cuando tiene un pedido para este cocinero
-    public void asignarPedido(Pedido pedido) {
+    // Llamado por el jefe cuando hay un pedido
+    public synchronized void asignarPedido(Pedido pedido) {
         this.pedidoActual = pedido;
-        semaforo.release();
+        this.ocupado = true;
+        semaforo.release();  // despierta al cocinero
     }
 
-    public boolean estaOcupado()
-    {
-        if (semaforo.tryAcquire()) {
-            semaforo.release();
-            return true;
-        }
-        return false;
-    }
     @Override
     public void run() {
         while (true) {
             try {
-                semaforo.acquire();
+                semaforo.acquire();  // espera a que le asignen un pedido
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
@@ -53,9 +49,10 @@ public class Cocinero extends Thread {
                 Thread.currentThread().interrupt();
             }
 
+            // Marcar como libre para el jefe
             synchronized (this) {
                 pedidoActual = null;
-                semaforo.release();
+                ocupado = false;
             }
         }
     }
