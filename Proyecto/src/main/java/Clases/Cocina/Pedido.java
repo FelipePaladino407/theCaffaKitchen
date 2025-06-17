@@ -1,4 +1,4 @@
-package Clases;
+package Clases.Cocina;
 import Clases.Herramientas.Herramienta;
 
 import java.util.ArrayList;
@@ -6,12 +6,9 @@ import java.util.ArrayList;
 public class Pedido {
     public String nombre;
     public ArrayList<Herramienta> herramientas;
-    public int tiempo;
-    public Pedido(String nombre, ArrayList<Herramienta> herramientas, int tiempo) {
+    public Pedido(String nombre, ArrayList<Herramienta> herramientas) {
         this.nombre = nombre;
         this.herramientas = herramientas;
-        this.tiempo = tiempo;
     }
-
 
 }

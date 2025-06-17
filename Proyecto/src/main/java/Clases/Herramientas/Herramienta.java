@@ -36,4 +36,5 @@ public abstract class Herramienta implements IHerramienta {
         return nombre;
     }
 
+    public abstract void dibujarProceso() throws InterruptedException;
 }
