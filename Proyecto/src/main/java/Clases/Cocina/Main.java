@@ -4,6 +4,7 @@ package Clases.Cocina;
 import Clases.Herramientas.Herramienta;
 import Clases.Herramientas.Horno;
 import Clases.Herramientas.Parrilla;
+import Clases.Interfaz.InterfazVisualSingleton;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -11,6 +12,8 @@ import java.util.Random;
 public class Main {
     public static void main(String[] args) {
         // Crear herramientas compartidas
+        InterfazVisualSingleton.get();
+
         ArrayList<Herramienta> herramientas = new ArrayList<>();
         herramientas.add(new Horno());
         herramientas.add(new Parrilla());

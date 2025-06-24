@@ -1,5 +1,9 @@
 package Clases.Herramientas;
 
+import Clases.Interfaz.InterfazVisualSingleton;
+
+import javax.swing.*;
+import java.util.HashMap;
 import java.util.concurrent.Semaphore;
 
 public abstract class Herramienta implements IHerramienta {
@@ -7,28 +11,43 @@ public abstract class Herramienta implements IHerramienta {
     protected final String nombre;
     protected final Semaphore disponibilidad;
 
+    // Atributos visuales individuales por herramienta
+    private final JLabel estadoLabel;
+    private final JProgressBar barraProgreso;
+
     public Herramienta(String nombre, int cantidadDisponible) {
         this.nombre = nombre;
         this.disponibilidad = new Semaphore(cantidadDisponible);
+        this.estadoLabel = InterfazVisualSingleton.get().crearEstadoLabel(nombre);
+        this.barraProgreso = InterfazVisualSingleton.get().crearBarraProgreso();
+        InterfazVisualSingleton.get().agregarHerramientaVisual(nombre, estadoLabel, barraProgreso);
     }
 
-    /**
-     * usar() es el equivalente a "p" que haciamos a papel.
-     */
     @Override
     public void pedir() throws InterruptedException {
         disponibilidad.acquire();
-        System.out.println(nombre + " se esta utilizando");
 
+        SwingUtilities.invokeLater(() -> estadoLabel.setText(nombre + ": Ocupado"));
+        InterfazVisualSingleton.get().log(nombre + " se está utilizando"); //Aviso que voy a usar
     }
 
-    /**
-     * liberar() es el equivalente a "v" que haciamos a papel.
-     */
     @Override
-    public void liberar(){
+    public void liberar() {
         disponibilidad.release();
-        System.out.println(nombre + " se ha liberado");
+        SwingUtilities.invokeLater(() -> {
+            estadoLabel.setText(nombre + ": Libre");
+            barraProgreso.setValue(0);
+        });
+        InterfazVisualSingleton.get().log(nombre + " se ha liberado"); //Aviso por la interfaz
+    }
+
+    public void ejecutarProceso(int duracionTotalMs) throws InterruptedException {
+        for (int i = 1; i <= 100; i++) {
+            final int progreso = i;
+            SwingUtilities.invokeLater(() -> barraProgreso.setValue(progreso)); //Actualizo la barra de cada herramienta
+            Thread.sleep(duracionTotalMs / 100);
+        }
+        InterfazVisualSingleton.get().log(nombre + " terminó de cocinar.");
     }
 
     @Override

@@ -1,6 +1,7 @@
 package Clases.Cocina;
 
 import Clases.Herramientas.Herramienta;
+import Clases.Interfaz.InterfazVisualSingleton;
 
 import java.util.concurrent.Semaphore;
 
@@ -38,6 +39,8 @@ public class Cocinero extends Thread {
 
             System.out.println(nombre + " está preparando " + pedidoActual.nombre);
 
+            InterfazVisualSingleton.get().log(nombre + " está preparando " + pedidoActual.nombre);
+
             try {
                 for (Herramienta h : pedidoActual.herramientas) {
                     h.pedir();
@@ -45,6 +48,7 @@ public class Cocinero extends Thread {
                     h.liberar();
                 }
                 System.out.println(nombre + " terminó " + pedidoActual.nombre);
+                InterfazVisualSingleton.get().log(nombre + " terminó " + pedidoActual.nombre);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
