@@ -37,31 +37,43 @@ public abstract class Herramienta implements IHerramienta {
      */
     @Override
     public void dibujarProceso(int duracionMs) throws InterruptedException {
-        final Object lock = new Object();
-        final boolean[] terminado = {false};
+        final Object lock = new Object();  // Lock de espera
+        final boolean[] terminado = {false};  // Bandera de finalización
 
         Platform.runLater(() -> {
             progressBar.setProgress(0);
-            Timeline timeline = new Timeline(
-                    new KeyFrame(Duration.ZERO, e -> progressBar.setProgress(0)),
-                    new KeyFrame(Duration.millis(duracionMs), e -> {
-                        progressBar.setProgress(1);
-                        synchronized (lock) {
-                            terminado[0] = true;
-                            lock.notify(); // ⚠️ IMPORTANTE: despierta al cocinero
-                        }
-                    })
-            );
+
+            int steps = 100;
+            double increment = 1.0 / steps;
+            double msPerStep = duracionMs / (double) steps;
+
+            Timeline timeline = new Timeline();
+            for (int i = 1; i <= steps; i++) {
+                final double progress = increment * i;
+                timeline.getKeyFrames().add(
+                        new KeyFrame(Duration.millis(i * msPerStep), e -> progressBar.setProgress(progress))
+                );
+            }
+
             timeline.setCycleCount(1);
+            timeline.setOnFinished(e -> {
+                synchronized (lock) {
+                    terminado[0] = true;
+                    lock.notify();  // Notificamos al hilo del cocinero
+                }
+            });
             timeline.play();
         });
 
         synchronized (lock) {
             while (!terminado[0]) {
-                lock.wait(); // ⏳ El cocinero se queda esperando acá
+                lock.wait();  // Esperamos hasta que se termine la animación
             }
         }
     }
+
+
+
 
 
 
