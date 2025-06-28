@@ -35,7 +35,8 @@ public abstract class Herramienta implements IHerramienta {
     /**
      * Simula el proceso con la barra de progreso durante un tiempo fijo (ej. 3 segundos)
      */
-    public void dibujarProceso() throws InterruptedException {
+    @Override
+    public void dibujarProceso(int duracionMs) throws InterruptedException {
         final Object lock = new Object();
         final boolean[] terminado = {false};
 
@@ -43,11 +44,11 @@ public abstract class Herramienta implements IHerramienta {
             progressBar.setProgress(0);
             Timeline timeline = new Timeline(
                     new KeyFrame(Duration.ZERO, e -> progressBar.setProgress(0)),
-                    new KeyFrame(Duration.seconds(8), e -> {
+                    new KeyFrame(Duration.millis(duracionMs), e -> {
                         progressBar.setProgress(1);
                         synchronized (lock) {
                             terminado[0] = true;
-                            lock.notify();
+                            lock.notify(); // ⚠️ IMPORTANTE: despierta al cocinero
                         }
                     })
             );
@@ -57,10 +58,12 @@ public abstract class Herramienta implements IHerramienta {
 
         synchronized (lock) {
             while (!terminado[0]) {
-                lock.wait();
+                lock.wait(); // ⏳ El cocinero se queda esperando acá
             }
         }
     }
+
+
 
 
 

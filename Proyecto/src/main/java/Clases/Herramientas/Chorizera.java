@@ -1,6 +1,10 @@
 package Clases.Herramientas;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.scene.control.ProgressBar;
+import javafx.util.Duration;
 
 public class Chorizera extends Herramienta {
 
@@ -9,14 +13,30 @@ public class Chorizera extends Herramienta {
     }
 
     @Override
-    public void dibujarProceso() {
-        new Thread(() -> {
-            try {
-                ejecutarProcesoConBarra(progressBar, 8000, () ->
-                        System.out.println("Proceso chorizera terminado"));
-            } catch (Exception e) {
-                e.printStackTrace();
+    public void dibujarProceso(int duracionMs) throws InterruptedException {
+        final Object lock = new Object();
+        final boolean[] terminado = {false};
+
+        Platform.runLater(() -> {
+            progressBar.setProgress(0);
+            Timeline timeline = new Timeline(
+                    new KeyFrame(Duration.ZERO, e -> progressBar.setProgress(0)),
+                    new KeyFrame(Duration.millis(duracionMs), e -> {
+                        progressBar.setProgress(1);
+                        synchronized (lock) {
+                            terminado[0] = true;
+                            lock.notify();
+                        }
+                    })
+            );
+            timeline.setCycleCount(1);
+            timeline.play();
+        });
+
+        synchronized (lock) {
+            while (!terminado[0]) {
+                lock.wait();
             }
-        }).start();
+        }
     }
 }

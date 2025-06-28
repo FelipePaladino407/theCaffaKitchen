@@ -50,7 +50,12 @@ public class Cocinero extends Thread {
             try {
                 etiquetaCallback.accept("Cocinando: " + pedidoActual.getNombre());
                 moverCocinero(nombre, pedidoActual.getHerramienta().getNombre());
-                pedidoActual.getHerramienta().dibujarProceso();
+
+                pedidoActual.getHerramienta().pedir();
+                pedidoActual.getHerramienta().dibujarProceso(pedidoActual.tiempo);
+                pedidoActual.getHerramienta().liberar();
+
+
                 moverCocinero(nombre, "Entrega");
                 etiquetaCallback.accept("");
             } catch (InterruptedException e) {

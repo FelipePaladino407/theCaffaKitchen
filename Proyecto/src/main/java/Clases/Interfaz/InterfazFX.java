@@ -25,6 +25,7 @@ import javafx.util.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
@@ -94,9 +95,10 @@ public class InterfazFX extends Application {
 
         // Agregar pedidos al jefe, asignando herramienta aleatoria
         String[] platos = {"Pizza", "Hamburguesa", "Tacos", "Ensalada", "Pan de ajo"};
+        Random random= new Random();
         for (int i = 0; i < 10; i++) {
             Herramienta herramienta = ThreadLocalRandom.current().nextBoolean() ? horno : parrilla;
-            Pedido pedido = new Pedido(platos[i % platos.length] + " #" + (i + 1), herramienta);
+            Pedido pedido = new Pedido(platos[i % platos.length] + " #" + (i + 1), herramienta, random.nextInt(1000,2000));
             jefeCocina.agregarPedido(pedido);
         }
 
