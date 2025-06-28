@@ -63,13 +63,15 @@ public class Cocinero extends Thread {
                 return;
             }
 
+            Pedido pedidoTerminado;
             synchronized (this) {
+                pedidoTerminado = pedidoActual;
                 pedidoActual = null;
                 ocupado = false;
             }
 
             // ✅ Notificar al jefe que este cocinero ya está libre
-            jefeCocina.notificarCocineroLibre();
+            jefeCocina.notificarCocineroLibre(pedidoTerminado);
         }
     }
 

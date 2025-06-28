@@ -10,13 +10,16 @@ import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Point2D;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
@@ -27,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.Consumer;
 
 public class InterfazFX extends Application {
 
@@ -48,6 +50,8 @@ public class InterfazFX extends Application {
     private JefeCocina jefeCocina;
     private Horno horno;
     private Parrilla parrilla;
+
+    private FlowPane contenedorPedidos;
 
     @Override
     public void start(Stage primaryStage) {
@@ -73,32 +77,43 @@ public class InterfazFX extends Application {
         agregarCocinero("Ana", Color.BLUE);
         agregarCocinero("Luis", Color.GREEN);
 
-        // 1. Crear la lista vacía de cocineros
+        // Inicializar contenedorPedidos ANTES de agregar pedidos
+        contenedorPedidos = new FlowPane();
+        contenedorPedidos.setHgap(10);
+        contenedorPedidos.setVgap(10);
+        contenedorPedidos.setPadding(new Insets(10));
+        contenedorPedidos.setPrefWrapLength(600);
+        contenedorPedidos.setLayoutX(50);
+        contenedorPedidos.setLayoutY(400);
+        root.getChildren().add(contenedorPedidos);
+
+        // Crear lista vacía y jefe
         List<Cocinero> cocinerosTemp = new java.util.ArrayList<>();
+        jefeCocina = new JefeCocina(cocinerosTemp,this);
 
-// 2. Crear el jefe primero (aunque reciba una lista vacía)
-        jefeCocina = new JefeCocina(cocinerosTemp);
-
-// 3. Crear cocineros con referencia al jefe
+        // Crear cocineros con referencia al jefe
         Cocinero cocineroJuan = new Cocinero("Juan", this::moverCocineroPorNombreDestino, texto -> actualizarEtiquetaPedido("Juan", texto), jefeCocina);
         Cocinero cocineroAna = new Cocinero("Ana", this::moverCocineroPorNombreDestino, texto -> actualizarEtiquetaPedido("Ana", texto), jefeCocina);
         Cocinero cocineroLuis = new Cocinero("Luis", this::moverCocineroPorNombreDestino, texto -> actualizarEtiquetaPedido("Luis", texto), jefeCocina);
 
-// 4. Agregar a la lista
+        // Agregar cocineros a la lista
         cocinerosTemp.add(cocineroJuan);
         cocinerosTemp.add(cocineroAna);
         cocinerosTemp.add(cocineroLuis);
 
-// 5. Guardar lista para uso general
         listaCocineros = cocinerosTemp;
 
-
-        // Agregar pedidos al jefe, asignando herramienta aleatoria
+        // Agregar pedidos al jefe con herramienta aleatoria y mostrar tarjetas
         String[] platos = {"Pizza", "Hamburguesa", "Tacos", "Ensalada", "Pan de ajo"};
-        Random random= new Random();
+        Random random = new Random();
         for (int i = 0; i < 10; i++) {
             Herramienta herramienta = ThreadLocalRandom.current().nextBoolean() ? horno : parrilla;
-            Pedido pedido = new Pedido(platos[i % platos.length] + " #" + (i + 1), herramienta, random.nextInt(1000,2000));
+            Pedido pedido = new Pedido(platos[i % platos.length] + " #" + (i + 1), herramienta, random.nextInt(1000, 2000),i+1);
+            Image imagen= new Image("pizza.jpg");
+
+            PedidoCard nuevaTarjeta = new PedidoCard(i + 1, pedido.getNombre(), "pendiente", imagen);
+            contenedorPedidos.getChildren().add(nuevaTarjeta);
+
             jefeCocina.agregarPedido(pedido);
         }
 
@@ -141,7 +156,7 @@ public class InterfazFX extends Application {
         cocinero.setStrokeWidth(2);
 
         Label etiqueta = new Label("");
-        etiqueta.setTranslateY(-30);  // etiqueta arriba del círculo
+        etiqueta.setTranslateY(-30);
         etiqueta.setStyle("-fx-font-weight: bold; -fx-text-fill: white; " +
                 "-fx-background-color: rgba(0,0,0,0.6); -fx-padding: 2 5 2 5; " +
                 "-fx-background-radius: 5;");
@@ -207,12 +222,8 @@ public class InterfazFX extends Application {
                 String destino = datos[1];
                 moverCocinero(nombre, destino, onFinish);
             }
-            // Elimina esta línea que llama a onFinish inmediatamente:
-            // onFinish.run();
         });
     }
-
-
 
     private void moverCocineroEncadenado(String paso1, String paso2, Runnable onFinish) {
         String[] datos1 = paso1.split("-");
@@ -274,7 +285,24 @@ public class InterfazFX extends Application {
         }
     }
 
+    public void eliminarPedido(int idPedido) {
+        Platform.runLater(() -> {
+            contenedorPedidos.getChildren().removeIf(node -> {
+                if (node instanceof PedidoCard) {
+                    PedidoCard pedidoCard = (PedidoCard) node;
+                    return pedidoCard.getNumeroPedido() == idPedido;
+                }
+                return false;
+            });
+        });
+    }
+
+
+
+
     public static void main(String[] args) {
         launch(args);
     }
+
+
 }

@@ -1,5 +1,7 @@
 package Clases.Cocina;
 
+import Clases.Interfaz.InterfazFX;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -7,18 +9,18 @@ import java.util.Queue;
 public class JefeCocina {
     private final List<Cocinero> cocineros;
     private final Queue<Pedido> pedidosPendientes = new LinkedList<>();
+    private InterfazFX interfaz;  // Añadido
 
-    public JefeCocina(List<Cocinero> cocineros) {
+    public JefeCocina(List<Cocinero> cocineros, InterfazFX interfaz) {
         this.cocineros = cocineros;
+        this.interfaz = interfaz;
     }
 
-    // Método sincronizado que agrega pedido y asigna en la misma operación
     public synchronized void agregarPedido(Pedido pedido) {
         pedidosPendientes.add(pedido);
         asignarPedidos();
     }
 
-    // Método privado sincronizado para asignar pedidos a cocineros libres
     private synchronized void asignarPedidos() {
         for (Cocinero cocinero : cocineros) {
             if (!cocinero.estaOcupado() && !pedidosPendientes.isEmpty()) {
@@ -28,9 +30,12 @@ public class JefeCocina {
         }
     }
 
-    // Podrías agregar un método para que los cocineros notifiquen cuando terminan y
-    // se pueda intentar asignar nuevos pedidos
-    public synchronized void notificarCocineroLibre() {
+    public synchronized void notificarCocineroLibre(Pedido pedidoTerminado) {
+        // Eliminar el pedido visualmente
+        interfaz.eliminarPedido(pedidoTerminado.getNumeroPedido());
+
+        // Intentar asignar nuevos pedidos
         asignarPedidos();
     }
 }
+
