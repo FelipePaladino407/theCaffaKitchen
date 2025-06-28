@@ -12,11 +12,13 @@ public class JefeCocina {
         this.cocineros = cocineros;
     }
 
+    // Método sincronizado que agrega pedido y asigna en la misma operación
     public synchronized void agregarPedido(Pedido pedido) {
         pedidosPendientes.add(pedido);
         asignarPedidos();
     }
 
+    // Método privado sincronizado para asignar pedidos a cocineros libres
     private synchronized void asignarPedidos() {
         for (Cocinero cocinero : cocineros) {
             if (!cocinero.estaOcupado() && !pedidosPendientes.isEmpty()) {
@@ -24,5 +26,11 @@ public class JefeCocina {
                 cocinero.asignarPedido(pedido);
             }
         }
+    }
+
+    // Podrías agregar un método para que los cocineros notifiquen cuando terminan y
+    // se pueda intentar asignar nuevos pedidos
+    public synchronized void notificarCocineroLibre() {
+        asignarPedidos();
     }
 }

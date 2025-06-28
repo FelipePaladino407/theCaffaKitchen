@@ -1,32 +1,22 @@
 package Clases.Herramientas;
 
-import javafx.application.Platform;
 import javafx.scene.control.ProgressBar;
 
 public class Horno extends Herramienta {
-    private final ProgressBar barra;
 
     public Horno(ProgressBar barra) {
-        super("Horno", 1);
-        this.barra = barra;
+        super("Horno", 1, barra);  // nombre, cantidad disponible y barra
     }
 
     @Override
-    public void dibujarProceso() throws InterruptedException {
-        final Object lock = new Object();
-
-        Platform.runLater(() -> {
-            ejecutarProcesoConBarra(barra, 3000, () -> {
-                synchronized (lock) {
-                    lock.notify();
-                }
-            });
-        });
-
-        synchronized (lock) {
-            lock.wait(); // El cocinero se queda esperando aquí hasta que termine la barra
-        }
+    public void dibujarProceso() {
+        new Thread(() -> {
+            try {
+                ejecutarProcesoConBarra(progressBar, 8000, () ->
+                        System.out.println("Proceso horno terminado"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
-
 }
-

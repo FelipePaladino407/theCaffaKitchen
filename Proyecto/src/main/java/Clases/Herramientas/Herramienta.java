@@ -9,10 +9,12 @@ import javafx.util.Duration;
 public abstract class Herramienta implements IHerramienta {
     protected final String nombre;
     protected final java.util.concurrent.Semaphore disponibilidad;
+    protected final ProgressBar progressBar;
 
-    public Herramienta(String nombre, int cantidadDisponible) {
+    public Herramienta(String nombre, int cantidadDisponible, ProgressBar progressBar) {
         this.nombre = nombre;
         this.disponibilidad = new java.util.concurrent.Semaphore(cantidadDisponible);
+        this.progressBar = progressBar;
     }
 
     @Override
@@ -30,27 +32,58 @@ public abstract class Herramienta implements IHerramienta {
         return nombre;
     }
 
-    public abstract void dibujarProceso() throws InterruptedException;
+    /**
+     * Simula el proceso con la barra de progreso durante un tiempo fijo (ej. 3 segundos)
+     */
+    public void dibujarProceso() throws InterruptedException {
+        final Object lock = new Object();
+        final boolean[] terminado = {false};
 
-    public void ejecutarProcesoConBarra(ProgressBar barra, int duracionMs, Runnable onFinished) {
-        Platform.runLater(() -> barra.setProgress(0));
-
-        Timeline timeline = new Timeline();
-        int steps = 100;
-        double intervalo = duracionMs / (double) steps;
-
-        for (int i = 1; i <= steps; i++) {
-            final double progreso = i / 100.0;
-            KeyFrame frame = new KeyFrame(Duration.millis(i * intervalo), e ->
-                    barra.setProgress(progreso));
-            timeline.getKeyFrames().add(frame);
-        }
-
-        timeline.setOnFinished(e -> {
-            barra.setProgress(0); // Reiniciar barra para próximo uso
-            if (onFinished != null) onFinished.run();
+        Platform.runLater(() -> {
+            progressBar.setProgress(0);
+            Timeline timeline = new Timeline(
+                    new KeyFrame(Duration.ZERO, e -> progressBar.setProgress(0)),
+                    new KeyFrame(Duration.seconds(8), e -> {
+                        progressBar.setProgress(1);
+                        synchronized (lock) {
+                            terminado[0] = true;
+                            lock.notify();
+                        }
+                    })
+            );
+            timeline.setCycleCount(1);
+            timeline.play();
         });
 
-        Platform.runLater(timeline::play);
+        synchronized (lock) {
+            while (!terminado[0]) {
+                lock.wait();
+            }
+        }
+    }
+
+
+
+
+    /**
+     * Ejecuta la animación de la barra de progreso de forma asíncrona.
+     *
+     * @param barra     La ProgressBar a animar.
+     * @param duracionMs Duración en milisegundos del proceso.
+     * @param onFinished Callback que se ejecuta cuando termina la animación.
+     */
+    public void ejecutarProcesoConBarra(ProgressBar barra, int duracionMs, Runnable onFinished) {
+        Platform.runLater(() -> {
+            barra.setProgress(0);
+            Timeline timeline = new Timeline(
+                    new KeyFrame(Duration.ZERO, e -> barra.setProgress(0)),
+                    new KeyFrame(Duration.millis(duracionMs), e -> {
+                        barra.setProgress(1);
+                        if (onFinished != null) onFinished.run();
+                    })
+            );
+            timeline.setCycleCount(1);
+            timeline.play();
+        });
     }
 }

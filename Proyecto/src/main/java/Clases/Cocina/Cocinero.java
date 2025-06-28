@@ -1,74 +1,89 @@
 package Clases.Cocina;
 
-import Clases.Herramientas.Herramienta;
-import Clases.Interfaz.InterfazVisualSingleton;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-
-import java.util.concurrent.Semaphore;
-
-
 public class Cocinero extends Thread {
-    private final String nombre;
+    private volatile boolean ocupado = false;
     private Pedido pedidoActual;
-    private final Semaphore semaforo = new Semaphore(0); // para esperar pedidos
-    private boolean ocupado = false;
-    private final Consumer<String> movimientoCallback;
+    private String nombre;
+    private BiConsumer<String, Runnable> moverCallback;
+    private Consumer<String> etiquetaCallback;
+    private JefeCocina jefeCocina; // 👉 NUEVO
 
-    public Cocinero(String nombre, Consumer<String> movimientoCallback) {
-
+    public Cocinero(String nombre,
+                    BiConsumer<String, Runnable> moverCallback,
+                    Consumer<String> etiquetaCallback,
+                    JefeCocina jefeCocina) { // 👉 Constructor actualizado
         this.nombre = nombre;
-        this.movimientoCallback = movimientoCallback;
+        this.moverCallback = moverCallback;
+        this.etiquetaCallback = etiquetaCallback;
+        this.jefeCocina = jefeCocina;
     }
 
-    public synchronized boolean estaOcupado() {
+    public boolean estaOcupado() {
         return ocupado;
     }
 
-    // Llamado por el jefe cuando hay un pedido
     public synchronized void asignarPedido(Pedido pedido) {
-        this.pedidoActual = pedido;
-        this.ocupado = true;
-        semaforo.release();  // despierta al cocinero
+        if (!ocupado) {
+            this.pedidoActual = pedido;
+            this.ocupado = true;
+            notify();
+        }
     }
 
     @Override
     public void run() {
         while (true) {
-            try {
-                semaforo.acquire();
-
-                // Mover al cocinero al lugar de la herramienta
-                movimientoCallback.accept(nombre + "-" + pedidoActual.herramienta.getNombre());
-                Thread.sleep(1000);
-                // Simular el trabajo (usar la herramienta)
-                pedidoActual.herramienta.pedir();
-
-                Thread proceso = new Thread(() -> {
+            synchronized (this) {
+                while (!ocupado) {
                     try {
-                        pedidoActual.herramienta.dibujarProceso();
+                        wait();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        Thread.currentThread().interrupt();
+                        return;
                     }
-                });
-                proceso.start();
-                proceso.join();
-
-
-                pedidoActual.herramienta.liberar();
-
-
-                // Mover al cocinero de vuelta al jefe
-                movimientoCallback.accept(nombre + "-Jefe");
-                Thread.sleep(1000);
-
-                synchronized (this) {
-                    pedidoActual = null;
-                    ocupado = false;
                 }
+            }
+
+            try {
+                etiquetaCallback.accept("Cocinando: " + pedidoActual.getNombre());
+                moverCocinero(nombre, pedidoActual.getHerramienta().getNombre());
+                pedidoActual.getHerramienta().dibujarProceso();
+                moverCocinero(nombre, "Entrega");
+                etiquetaCallback.accept("");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                break;
+                return;
+            }
+
+            synchronized (this) {
+                pedidoActual = null;
+                ocupado = false;
+            }
+
+            // ✅ Notificar al jefe que este cocinero ya está libre
+            jefeCocina.notificarCocineroLibre();
+        }
+    }
+
+    private final Object lockMovimiento = new Object();
+    private boolean movimientoTerminado = false;
+
+    private void moverCocinero(String nombre, String destino) throws InterruptedException {
+        movimientoTerminado = false;
+
+        moverCallback.accept(nombre + "-" + destino, () -> {
+            synchronized (lockMovimiento) {
+                movimientoTerminado = true;
+                lockMovimiento.notify();
+            }
+        });
+
+        synchronized (lockMovimiento) {
+            while (!movimientoTerminado) {
+                lockMovimiento.wait();
             }
         }
     }

@@ -3,19 +3,20 @@ package Clases.Herramientas;
 import javafx.scene.control.ProgressBar;
 
 public class Chorizera extends Herramienta {
-    private final ProgressBar barra;
 
     public Chorizera(ProgressBar barra) {
-        super("Horno", 1);
-        this.barra = barra;
+        super("Chorizera", 1, barra);  // nombre, cantidad disponible y barra
     }
 
     @Override
     public void dibujarProceso() {
         new Thread(() -> {
-            ejecutarProcesoConBarra(barra, 8000, () ->
-                    System.out.println("Proceso horno terminado"));
+            try {
+                ejecutarProcesoConBarra(progressBar, 8000, () ->
+                        System.out.println("Proceso chorizera terminado"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }).start();
     }
 }
-
