@@ -2,6 +2,8 @@ package Clases.Cocina;
 
 import Clases.Herramientas.Herramienta;
 import Clases.Interfaz.InterfazVisualSingleton;
+import java.util.function.Consumer;
+
 
 import java.util.concurrent.Semaphore;
 
@@ -11,9 +13,12 @@ public class Cocinero extends Thread {
     private Pedido pedidoActual;
     private final Semaphore semaforo = new Semaphore(0); // para esperar pedidos
     private boolean ocupado = false;
+    private final Consumer<String> movimientoCallback;
 
-    public Cocinero(String nombre) {
+    public Cocinero(String nombre, Consumer<String> movimientoCallback) {
+
         this.nombre = nombre;
+        this.movimientoCallback = movimientoCallback;
     }
 
     public synchronized boolean estaOcupado() {
@@ -31,32 +36,39 @@ public class Cocinero extends Thread {
     public void run() {
         while (true) {
             try {
-                semaforo.acquire();  // espera a que le asignen un pedido
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
+                semaforo.acquire();
 
-            System.out.println(nombre + " está preparando " + pedidoActual.nombre);
+                // Mover al cocinero al lugar de la herramienta
+                movimientoCallback.accept(nombre + "-" + pedidoActual.herramienta.getNombre());
+                Thread.sleep(1000);
+                // Simular el trabajo (usar la herramienta)
+                pedidoActual.herramienta.pedir();
 
-            InterfazVisualSingleton.get().log(nombre + " está preparando " + pedidoActual.nombre);
+                Thread proceso = new Thread(() -> {
+                    try {
+                        pedidoActual.herramienta.dibujarProceso();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                });
+                proceso.start();
+                proceso.join();
 
-            try {
-                for (Herramienta h : pedidoActual.herramientas) {
-                    h.pedir();
-                    h.dibujarProceso();
-                    h.liberar();
+
+                pedidoActual.herramienta.liberar();
+
+
+                // Mover al cocinero de vuelta al jefe
+                movimientoCallback.accept(nombre + "-Jefe");
+                Thread.sleep(1000);
+
+                synchronized (this) {
+                    pedidoActual = null;
+                    ocupado = false;
                 }
-                System.out.println(nombre + " terminó " + pedidoActual.nombre);
-                InterfazVisualSingleton.get().log(nombre + " terminó " + pedidoActual.nombre);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-            }
-
-            // Marcar como libre para el jefe
-            synchronized (this) {
-                pedidoActual = null;
-                ocupado = false;
+                break;
             }
         }
     }

@@ -1,13 +1,21 @@
 package Clases.Herramientas;
 
-import Clases.Interfaz.InterfazVisualSingleton;
+import javafx.scene.control.ProgressBar;
 
 public class Freidora extends Herramienta {
-    public Freidora() {
-        super("Freidora", 3);
+    private final ProgressBar barra;
+
+    public Freidora(ProgressBar barra) {
+        super("Horno", 1);
+        this.barra = barra;
     }
+
     @Override
-    public void dibujarProceso() throws InterruptedException {
-        ejecutarProceso(2000);  // 2 segundos de duración
+    public void dibujarProceso() {
+        new Thread(() -> {
+            ejecutarProcesoConBarra(barra, 8000, () ->
+                    System.out.println("Proceso horno terminado"));
+        }).start();
     }
 }
+

@@ -1,13 +1,21 @@
 package Clases.Herramientas;
 
-import Clases.Interfaz.InterfazVisualSingleton;
+import javafx.scene.control.ProgressBar;
 
 public class Chorizera extends Herramienta {
-    public Chorizera() {
-        super("Chorizera", 2);
+    private final ProgressBar barra;
+
+    public Chorizera(ProgressBar barra) {
+        super("Horno", 1);
+        this.barra = barra;
     }
+
     @Override
-    public void dibujarProceso() throws InterruptedException {
-        ejecutarProceso(8000);  // 8 segundos de duración
+    public void dibujarProceso() {
+        new Thread(() -> {
+            ejecutarProcesoConBarra(barra, 8000, () ->
+                    System.out.println("Proceso horno terminado"));
+        }).start();
     }
 }
+

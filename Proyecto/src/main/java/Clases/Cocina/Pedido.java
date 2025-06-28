@@ -5,10 +5,11 @@ import java.util.ArrayList;
 
 public class Pedido {
     public String nombre;
-    public ArrayList<Herramienta> herramientas;
-    public Pedido(String nombre, ArrayList<Herramienta> herramientas) {
+    public Herramienta herramienta;
+    public Pedido(String nombre, Herramienta herramienta) {
         this.nombre = nombre;
-        this.herramientas = herramientas;
+        this.herramienta = herramienta;
     }
-
+    public String getNombre() { return nombre; }
+    public Herramienta getHerramienta() { return herramienta; }
 }

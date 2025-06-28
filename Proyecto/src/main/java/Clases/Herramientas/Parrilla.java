@@ -1,13 +1,32 @@
 package Clases.Herramientas;
 
-import Clases.Interfaz.InterfazVisualSingleton;
+import javafx.application.Platform;
+import javafx.scene.control.ProgressBar;
 
 public class Parrilla extends Herramienta {
-    public Parrilla() {
-        super("La Parrilla de Hugo", 1);
+    private final ProgressBar barra;
+
+    public Parrilla(ProgressBar barra) {
+        super("Parrilla", 1);
+        this.barra = barra;
     }
+
     @Override
     public void dibujarProceso() throws InterruptedException {
-        ejecutarProceso(1000);  // 5 segundos de duración
+        final Object lock = new Object();
+
+        Platform.runLater(() -> {
+            ejecutarProcesoConBarra(barra, 3000, () -> {
+                synchronized (lock) {
+                    lock.notify();
+                }
+            });
+        });
+
+        synchronized (lock) {
+            lock.wait(); // El cocinero se queda esperando aquí hasta que termine la barra
+        }
     }
+
 }
+
