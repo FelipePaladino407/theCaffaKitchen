@@ -20,4 +20,8 @@ public class Pedido {
     public int getNumeroPedido() {
         return numPedido;
     }
+
+    public int getTiempo(){
+        return this.tiempo;
+    }
 }

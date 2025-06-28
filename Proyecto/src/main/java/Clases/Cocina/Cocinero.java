@@ -1,97 +1,92 @@
 package Clases.Cocina;
+import java.util.concurrent.CountDownLatch;
 
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class Cocinero extends Thread {
+    private final String nombre;
+    private final java.util.function.BiConsumer<String, Runnable> moverCallback;
+    private final java.util.function.Consumer<String> actualizarEtiqueta;
+    private final JefeCocina jefeCocina;
+
     private volatile boolean ocupado = false;
     private Pedido pedidoActual;
-    private String nombre;
-    private BiConsumer<String, Runnable> moverCallback;
-    private Consumer<String> etiquetaCallback;
-    private JefeCocina jefeCocina; // 👉 NUEVO
 
     public Cocinero(String nombre,
-                    BiConsumer<String, Runnable> moverCallback,
-                    Consumer<String> etiquetaCallback,
-                    JefeCocina jefeCocina) { // 👉 Constructor actualizado
+                    java.util.function.BiConsumer<String, Runnable> moverCallback,
+                    java.util.function.Consumer<String> actualizarEtiqueta,
+                    JefeCocina jefeCocina) {
         this.nombre = nombre;
         this.moverCallback = moverCallback;
-        this.etiquetaCallback = etiquetaCallback;
+        this.actualizarEtiqueta = actualizarEtiqueta;
         this.jefeCocina = jefeCocina;
     }
 
-    public boolean estaOcupado() {
+    public synchronized boolean estaOcupado() {
         return ocupado;
     }
 
     public synchronized void asignarPedido(Pedido pedido) {
-        if (!ocupado) {
-            this.pedidoActual = pedido;
-            this.ocupado = true;
-            notify();
-        }
+        this.pedidoActual = pedido;
+        this.ocupado = true;
+        notify();  // Despierta al cocinero si está esperando
     }
 
     @Override
     public void run() {
         while (true) {
+            Pedido pedidoAProcesar;
+
             synchronized (this) {
-                while (!ocupado) {
+                while (pedidoActual == null) {
                     try {
                         wait();
                     } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
                         return;
                     }
                 }
+                pedidoAProcesar = pedidoActual;
             }
 
-            try {
-                etiquetaCallback.accept("Cocinando: " + pedidoActual.getNombre());
-                moverCocinero(nombre, pedidoActual.getHerramienta().getNombre());
+            procesarPedido(pedidoAProcesar);
 
-                pedidoActual.getHerramienta().pedir();
-                pedidoActual.getHerramienta().dibujarProceso(pedidoActual.tiempo);
-                pedidoActual.getHerramienta().liberar();
-
-
-                moverCocinero(nombre, "Entrega");
-                etiquetaCallback.accept("");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
-
-            Pedido pedidoTerminado;
             synchronized (this) {
-                pedidoTerminado = pedidoActual;
                 pedidoActual = null;
                 ocupado = false;
             }
 
-            // ✅ Notificar al jefe que este cocinero ya está libre
-            jefeCocina.notificarCocineroLibre(pedidoTerminado);
+            jefeCocina.notificarCocineroLibre(pedidoAProcesar);
         }
     }
 
-    private final Object lockMovimiento = new Object();
-    private boolean movimientoTerminado = false;
+    private void procesarPedido(Pedido pedido) {
+        try {
+            // Paso 1: Ir del cocinero al jefe y luego a la herramienta
+            CountDownLatch latch1 = new CountDownLatch(1);
+            moverCallback.accept(nombre + "-Jefe->" + nombre + "-" + pedido.getHerramienta().getNombre(), () -> {
+                actualizarEtiqueta.accept("Preparando " + pedido.getNombre());
+                latch1.countDown();
+            });
+            latch1.await(); // Esperar a que termine el movimiento
 
-    private void moverCocinero(String nombre, String destino) throws InterruptedException {
-        movimientoTerminado = false;
-
-        moverCallback.accept(nombre + "-" + destino, () -> {
-            synchronized (lockMovimiento) {
-                movimientoTerminado = true;
-                lockMovimiento.notify();
+            // Paso 2: Usar herramienta
+            pedido.getHerramienta().pedir();
+            try {
+                pedido.getHerramienta().dibujarProceso(pedido.getTiempo());
+            } finally {
+                pedido.getHerramienta().liberar();
             }
-        });
 
-        synchronized (lockMovimiento) {
-            while (!movimientoTerminado) {
-                lockMovimiento.wait();
-            }
+            // Paso 3: Ir a entregar
+            CountDownLatch latch2 = new CountDownLatch(1);
+            moverCallback.accept(nombre + "-" + pedido.getHerramienta().getNombre() + "->" + nombre + "-Entrega", () -> {
+                actualizarEtiqueta.accept("Entregado " + pedido.getNombre());
+                latch2.countDown();
+            });
+            latch2.await();
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
+
 }

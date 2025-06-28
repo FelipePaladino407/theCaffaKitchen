@@ -19,21 +19,23 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
+import javafx.geometry.Insets;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class InterfazFX extends Application {
 
     private Pane root;
+    private static final int MAX_PEDIDOS_VISIBLES = 5;
+    private final Queue<Pedido> colaPendientes = new LinkedList<>();
+    private final Map<Integer, PedidoCard> tarjetasVisibles = new HashMap<>();
+
 
     private final Map<String, Point2D> ubicaciones = Map.of(
             "Horno", new Point2D(300, 100),
@@ -51,7 +53,7 @@ public class InterfazFX extends Application {
     private Horno horno;
     private Parrilla parrilla;
 
-    private FlowPane contenedorPedidos;
+    private VBox contenedorPedidos;
 
     @Override
     public void start(Stage primaryStage) {
@@ -78,11 +80,9 @@ public class InterfazFX extends Application {
         agregarCocinero("Luis", Color.GREEN);
 
         // Inicializar contenedorPedidos ANTES de agregar pedidos
-        contenedorPedidos = new FlowPane();
-        contenedorPedidos.setHgap(10);
-        contenedorPedidos.setVgap(10);
+        contenedorPedidos = new VBox(10); // espaciado horizontal de 10px
+        // espaciado vertical de 10px
         contenedorPedidos.setPadding(new Insets(10));
-        contenedorPedidos.setPrefWrapLength(600);
         contenedorPedidos.setLayoutX(50);
         contenedorPedidos.setLayoutY(400);
         root.getChildren().add(contenedorPedidos);
@@ -102,18 +102,12 @@ public class InterfazFX extends Application {
         cocinerosTemp.add(cocineroLuis);
 
         listaCocineros = cocinerosTemp;
-
+        Herramienta[] herramientas= {horno,parrilla};
         // Agregar pedidos al jefe con herramienta aleatoria y mostrar tarjetas
         String[] platos = {"Pizza", "Hamburguesa", "Tacos", "Ensalada", "Pan de ajo"};
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
-            Herramienta herramienta = ThreadLocalRandom.current().nextBoolean() ? horno : parrilla;
-            Pedido pedido = new Pedido(platos[i % platos.length] + " #" + (i + 1), herramienta, random.nextInt(1000, 2000),i+1);
-            Image imagen= new Image("pizza.jpg");
-
-            PedidoCard nuevaTarjeta = new PedidoCard(i + 1, pedido.getNombre(), "pendiente", imagen);
-            contenedorPedidos.getChildren().add(nuevaTarjeta);
-
+            Pedido pedido = new Pedido(platos[random.nextInt(platos.length)],herramientas[random.nextInt(herramientas.length)], random.nextInt(1000,2000),i+1 );
             jefeCocina.agregarPedido(pedido);
         }
 
@@ -285,17 +279,110 @@ public class InterfazFX extends Application {
         }
     }
 
-    public void eliminarPedido(int idPedido) {
-        Platform.runLater(() -> {
-            contenedorPedidos.getChildren().removeIf(node -> {
-                if (node instanceof PedidoCard) {
-                    PedidoCard pedidoCard = (PedidoCard) node;
-                    return pedidoCard.getNumeroPedido() == idPedido;
-                }
-                return false;
-            });
-        });
+    // Recibe la cola completa de pedidos pendientes y actualiza las tarjetas visibles
+    public void actualizarPedidosVisibles(Queue<Pedido> colaPedidos) {
+        colaPendientes.clear();
+        colaPendientes.addAll(colaPedidos);
+
+        // Limpiar las tarjetas actuales
+        contenedorPedidos.getChildren().clear();
+
+        // Mostrar solo hasta 5 pedidos visibles
+        int maxVisibles = 5;
+        int count = 0;
+
+        for (Pedido pedido : colaPendientes) {
+            if (count >= maxVisibles) break;
+
+            StackPane tarjetaPedido = crearTarjetaPedido(pedido);
+            contenedorPedidos.getChildren().add(tarjetaPedido);
+            count++;
+        }
     }
+
+
+    // Añade una tarjeta visual para un pedido
+    private void agregarTarjetaPedido(Pedido pedido) {
+        Image imagen = new Image("pizza.jpg"); // O el que corresponda
+        PedidoCard nuevaTarjeta = new PedidoCard(pedido.getNumeroPedido(), pedido.getNombre(), "pendiente", imagen);
+        contenedorPedidos.getChildren().add(nuevaTarjeta);
+        tarjetasVisibles.put(pedido.getNumeroPedido(), nuevaTarjeta);
+    }
+
+    // Elimina la tarjeta y actualiza la lista visible para mostrar siguiente si hay
+    public void eliminarPedido(int numeroPedido) {
+        StackPane tarjetaAEliminar = null;
+
+        for (javafx.scene.Node nodo : contenedorPedidos.getChildren()) {
+            if (nodo instanceof StackPane) {
+                StackPane tarjeta = (StackPane) nodo;
+
+                Label etiqueta = null;
+                for (javafx.scene.Node hijo : tarjeta.getChildren()) {
+                    if (hijo instanceof Label) {
+                        etiqueta = (Label) hijo;
+                        break;
+                    }
+                }
+
+                if (etiqueta != null && etiqueta.getText().contains("#" + numeroPedido)) {
+                    tarjetaAEliminar = tarjeta;
+                    break;
+                }
+            }
+        }
+
+        if (tarjetaAEliminar != null) {
+            contenedorPedidos.getChildren().remove(tarjetaAEliminar);
+        }
+
+        if (!colaPendientes.isEmpty()) {
+            colaPendientes.removeIf(p -> p.getNumeroPedido() == numeroPedido);
+            actualizarPedidosVisibles(new LinkedList<>(colaPendientes));
+        }
+    }
+
+
+
+    // Llamado desde JefeCocina cuando se asigna un pedido para que no aparezca en la lista visible
+    public void quitarPedidoDeCola(int idPedido) {
+        colaPendientes.removeIf(p -> p.getNumeroPedido() == idPedido);
+    }
+
+    private StackPane crearTarjetaPedido(Pedido pedido) {
+        StackPane tarjeta = new StackPane();
+        tarjeta.setPrefSize(200, 60);
+        tarjeta.setStyle("-fx-background-color: rgba(0, 0, 0, 0.7); -fx-background-radius: 10;");
+
+        // Imagen (elige la que quieras, aquí ejemplo genérico)
+        ImageView imagen = new ImageView(new Image("pizza.jpg"));
+        imagen.setFitWidth(40);
+        imagen.setFitHeight(40);
+        imagen.setTranslateX(-70);
+
+        // Texto con nombre y número de pedido
+        Label texto = new Label("#" + pedido.getNumeroPedido() + " - " + pedido.getNombre());
+        texto.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
+
+        tarjeta.getChildren().addAll(imagen, texto);
+        StackPane.setMargin(texto, new Insets(0, 0, 0, 30));
+
+        return tarjeta;
+    }
+
+    private Image getImagenPorNombre(String nombre) {
+        switch(nombre.toLowerCase()) {
+            case "pizza": return new Image("pizza.jpg");
+            case "hamburguesa": return new Image("pizza.jpg");
+            case "tacos": return new Image("pizza.jpg");
+            case "ensalada": return new Image("pizza.jpg");
+            case "pan de ajo": return new Image("pizza.jpg");
+            default: return new Image("pizza.jpg");
+        }
+    }
+
+
+
 
 
 
