@@ -152,9 +152,10 @@ public class InterfazFX extends Application {
 
 
     private void agregarCocinero(String nombre, Color color) {
-        Circle cocinero = new Circle(15, color);
-        cocinero.setStroke(Color.BLACK);
-        cocinero.setStrokeWidth(2);
+        Image imagenCocinero = new Image(nombre.toLowerCase() + ".png"); // Asegúrate que estos archivos existan en resources
+        ImageView cocineroView = new ImageView(imagenCocinero);
+        cocineroView.setFitWidth(40); // Ajusta el tamaño según convenga
+        cocineroView.setFitHeight(60);
 
         Label etiqueta = new Label("");
         etiqueta.setTranslateY(-30);
@@ -162,7 +163,7 @@ public class InterfazFX extends Application {
                 "-fx-background-color: rgba(0,0,0,0.6); -fx-padding: 2 5 2 5; " +
                 "-fx-background-radius: 5;");
 
-        StackPane stack = new StackPane(cocinero, etiqueta);
+        StackPane stack = new StackPane(cocineroView, etiqueta);
         Point2D inicio = ubicaciones.get("Jefe");
         stack.setLayoutX(inicio.getX());
         stack.setLayoutY(inicio.getY());
@@ -171,6 +172,7 @@ public class InterfazFX extends Application {
         cocineros.put(nombre, stack);
         etiquetasPedidos.put(nombre, etiqueta);
     }
+
 
     public void actualizarEtiquetaPedido(String nombreCocinero, String texto) {
         Platform.runLater(() -> {
