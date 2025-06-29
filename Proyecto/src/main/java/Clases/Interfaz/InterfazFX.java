@@ -28,6 +28,8 @@ import javafx.util.Duration;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 
 public class InterfazFX extends Application {
 
@@ -38,10 +40,10 @@ public class InterfazFX extends Application {
 
 
     private final Map<String, Point2D> ubicaciones = Map.of(
-            "Horno", new Point2D(300, 100),
-            "Parrilla", new Point2D(500, 100),
-            "Entrega", new Point2D(650, 250),
-            "Jefe", new Point2D(100, 300)
+            "Horno", new Point2D(160,200),
+            "Parrilla", new Point2D(140, 300),
+            "Entrega", new Point2D(600, 300),
+            "Jefe", new Point2D(150, 300)
     );
 
     private final Map<String, StackPane> cocineros = new HashMap<>();
@@ -57,16 +59,23 @@ public class InterfazFX extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        String path = getClass().getResource("/musica.mp3").toExternalForm();
+        Media media = new Media(path);
+        MediaPlayer mediaPlayer = new MediaPlayer(media);
+        mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+        mediaPlayer.setVolume(0.9); // Puedes cambiar el volumen
+        mediaPlayer.play();
+
+
         root = new Pane();
 
-        Image fondo = new Image("cocina.jpg");
+        Image fondo = new Image("overccoked2.jpg");
         ImageView fondoView = new ImageView(fondo);
         fondoView.setFitWidth(800);
         fondoView.setFitHeight(600);
         root.getChildren().add(fondoView);
 
         Circle marcadorEntrega = new Circle(650, 250, 10, Color.YELLOW);
-        marcadorEntrega.setStroke(Color.BLACK);
         root.getChildren().add(marcadorEntrega);
 
         ProgressBar barraHorno = agregarHerramienta("Horno", "horno.jpg");
@@ -124,17 +133,14 @@ public class InterfazFX extends Application {
 
     private ProgressBar agregarHerramienta(String nombre, String rutaImagen) {
         Point2D pos = ubicaciones.get(nombre);
-        ImageView img = new ImageView(new Image(rutaImagen));
-        img.setFitWidth(64);
-        img.setFitHeight(64);
 
         ProgressBar barra = new ProgressBar(0);
         barra.setPrefWidth(64);
         barra.setPrefHeight(10);
-        barra.setTranslateY(-10);
         barra.setStyle("-fx-accent: #ff4500;");
 
-        StackPane stack = new StackPane(img, barra);
+        // Como no queremos mostrar la imagen, sólo agregamos la barra directamente
+        StackPane stack = new StackPane(barra);
         stack.setLayoutX(pos.getX());
         stack.setLayoutY(pos.getY());
 
@@ -143,6 +149,7 @@ public class InterfazFX extends Application {
 
         return barra;
     }
+
 
     private void agregarCocinero(String nombre, Color color) {
         Circle cocinero = new Circle(15, color);
@@ -179,6 +186,21 @@ public class InterfazFX extends Application {
         Point2D objetivo = ubicaciones.get(destino);
 
         if (stack != null && objetivo != null) {
+
+            double anchoHerramienta = 64;
+            double altoHerramienta = 64;
+
+            double radioCocinero = 15; // porque los círculos tienen radio 15
+
+// Centrado horizontal, debajo de la herramienta con un margen, y un pequeño desplazamiento hacia la izquierda
+            objetivo = objetivo.add(
+                    (anchoHerramienta / 2) - radioCocinero - 300,  // <- Ajuste de 20 píxeles a la izquierda
+                    altoHerramienta + 5                          // Mismo margen vertical
+            );
+
+
+
+
             TranslateTransition tt = new TranslateTransition(Duration.seconds(1), stack);
             double actualX = stack.getLayoutX() + stack.getTranslateX();
             double actualY = stack.getLayoutY() + stack.getTranslateY();
@@ -188,9 +210,10 @@ public class InterfazFX extends Application {
             tt.setToX(dx);
             tt.setToY(dy);
 
+            Point2D finalObjetivo = objetivo;
             tt.setOnFinished(e -> {
-                stack.setLayoutX(objetivo.getX());
-                stack.setLayoutY(objetivo.getY());
+                stack.setLayoutX(finalObjetivo.getX());
+                stack.setLayoutY(finalObjetivo.getY());
                 stack.setTranslateX(0);
                 stack.setTranslateY(0);
                 if (onFinish != null) onFinish.run();

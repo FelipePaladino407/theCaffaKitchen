@@ -26,6 +26,11 @@
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -37,7 +42,7 @@
                 <configuration>
                     <mainClass>Clases.Interfaz.InterfazFX</mainClass>
                     <options>
-                        <option>--add-modules=javafx.controls,javafx.fxml</option>
+                        <option>--add-modules=javafx.controls,javafx.fxml,javafx.media</option>
                     </options>
                 </configuration>
                 <executions>
@@ -50,4 +55,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>
