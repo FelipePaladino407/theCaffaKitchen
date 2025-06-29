@@ -6,14 +6,20 @@ import javafx.application.Platform;
 import javafx.scene.control.ProgressBar;
 import javafx.util.Duration;
 
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+
 public abstract class Herramienta implements IHerramienta {
     protected final String nombre;
-    protected final java.util.concurrent.Semaphore disponibilidad;
+    protected final Semaphore disponibilidad;
     protected final ProgressBar progressBar;
 
     public Herramienta(String nombre, int cantidadDisponible, ProgressBar progressBar) {
         this.nombre = nombre;
-        this.disponibilidad = new java.util.concurrent.Semaphore(cantidadDisponible);
+        /**
+         * Activo el fairness en el semáforo.
+         */
+        this.disponibilidad = new Semaphore(cantidadDisponible, true);
         this.progressBar = progressBar;
     }
 
@@ -31,6 +37,25 @@ public abstract class Herramienta implements IHerramienta {
     public String getNombre() {
         return nombre;
     }
+
+    /**
+     * Devuelve cuantos recursos, ya sea "Horno", "Parrilla"... Hay disponibles en el momento.
+     */
+    public int getPermitsAvailable() {
+        return disponibilidad.availablePermits();
+    }
+    /**
+     * Devuelve cuántos hilos están actualmente en cola esperando un permiso.
+     */
+    public int getQueueLength() {
+        return disponibilidad.getQueueLength();
+    }
+
+    public boolean pedir(long timeout, TimeUnit unit) throws InterruptedException {
+        return disponibilidad.tryAcquire(timeout, unit);
+    }
+
+
 
     /**
      * Simula el proceso con la barra de progreso durante un tiempo fijo (ej. 3 segundos)

@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="runJavaFx" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="openjdk-24" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <option name="MAIN_CLASS_NAME" value="Clases.Interfaz.InterfazFX" />
+    <module name="Proyecto" />
+    <option name="VM_PARAMETERS" value="--module-path &quot;C:\Users\Estudiante UCU\Documents\SO\javafx-sdk-21.0.7\lib&quot; --add-modules javafx.controls,javafx.graphics,javafx.fxml " />
+    <extension name="software.aws.toolkits.jetbrains.core.execution.JavaAwsConnectionExtension">
+      <option name="credential" />
+      <option name="region" />
+      <option name="useCurrentConnection" value="false" />
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

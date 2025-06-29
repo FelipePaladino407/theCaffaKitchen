@@ -6,11 +6,15 @@ import Clases.Cocina.Pedido;
 import Clases.Herramientas.Horno;
 import Clases.Herramientas.Parrilla;
 import Clases.Herramientas.Herramienta;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Point2D;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
@@ -35,6 +39,13 @@ public class InterfazFX extends Application {
     private static final int MAX_PEDIDOS_VISIBLES = 5;
     private final Queue<Pedido> colaPendientes = new LinkedList<>();
     private final Map<Integer, PedidoCard> tarjetasVisibles = new HashMap<>();
+
+    /**
+     * Cambios Felipe. Para ver en tiempo real cuantos recursos estan libres y cuantos en cola.
+     */
+    private final Map<String, Label> permisosLabels = new HashMap<>();
+    private final Map<String, Label> colaLabels    = new HashMap<>();
+    private final Map<String, Herramienta> herramientaMap = new HashMap<>();
 
 
     private final Map<String, Point2D> ubicaciones = Map.of(
@@ -69,11 +80,18 @@ public class InterfazFX extends Application {
         marcadorEntrega.setStroke(Color.BLACK);
         root.getChildren().add(marcadorEntrega);
 
-        ProgressBar barraHorno = agregarHerramienta("Horno", "horno.jpg");
-        ProgressBar barraParrilla = agregarHerramienta("Parrilla", "parrilla.png");
+        // CREA las barras manualmente
+        ProgressBar barraHorno    = new ProgressBar(0);
+        ProgressBar barraParrilla = new ProgressBar(0);
 
-        horno = new Horno(barraHorno);
+// INICIA tus herramientas con esas barras
+        horno    = new Horno(barraHorno);
         parrilla = new Parrilla(barraParrilla);
+
+// LLAMA al nuevo agregarHerramienta que recibe la herramienta
+        agregarHerramienta("Horno",    "horno.jpg",    horno);
+        agregarHerramienta("Parrilla", "parrilla.png", parrilla);
+
 
         agregarCocinero("Juan", Color.RED);
         agregarCocinero("Ana", Color.BLUE);
@@ -111,6 +129,13 @@ public class InterfazFX extends Application {
             jefeCocina.agregarPedido(pedido);
         }
 
+        // Simulamos dos pedidos para el horno
+        Pedido pLento = new Pedido("SlowPizza", horno, 8000, 1001);
+        Pedido pRapido = new Pedido("FastPizza", horno, 1000, 1002);
+        jefeCocina.agregarPedido(pLento);
+        jefeCocina.agregarPedido(pRapido);
+
+
         // Iniciar threads de cocineros
         for (Cocinero c : listaCocineros) {
             c.start();
@@ -120,29 +145,67 @@ public class InterfazFX extends Application {
         primaryStage.setScene(scene);
         primaryStage.setTitle("Cocina estilo Overcooked");
         primaryStage.show();
+
+        // Después de primaryStage.show();
+        Timeline refresco = new Timeline(
+                new KeyFrame(Duration.ZERO, e -> {
+                    // Por cada herramienta, actualiza etiquetas
+                    herramientaMap.forEach((nombre, herr) -> {
+                        Label libLabel = permisosLabels.get(nombre);
+                        Label colLabel = colaLabels.get(nombre);
+                        libLabel.setText("Libres: " + herr.getPermitsAvailable());
+                        colLabel.setText("En cola: " + herr.getQueueLength());
+                    });
+                }),
+                new KeyFrame(Duration.millis(500))
+        );
+        refresco.setCycleCount(Animation.INDEFINITE);
+        refresco.play();
+
     }
 
-    private ProgressBar agregarHerramienta(String nombre, String rutaImagen) {
+    private void agregarHerramienta(String nombre,
+                                    String rutaImagen,
+                                    Herramienta herramienta) {
+        // 1) Posición en la cocina
         Point2D pos = ubicaciones.get(nombre);
+
+        // 2) Imagen
         ImageView img = new ImageView(new Image(rutaImagen));
         img.setFitWidth(64);
         img.setFitHeight(64);
 
+        // 3) Barra de progreso
         ProgressBar barra = new ProgressBar(0);
         barra.setPrefWidth(64);
         barra.setPrefHeight(10);
-        barra.setTranslateY(-10);
-        barra.setStyle("-fx-accent: #ff4500;");
 
-        StackPane stack = new StackPane(img, barra);
-        stack.setLayoutX(pos.getX());
-        stack.setLayoutY(pos.getY());
+        // 4) Etiquetas de estado
+        Label libLabel = new Label("Libres: " + herramienta.getPermitsAvailable());
+        Label colLabel = new Label("En cola: " + herramienta.getQueueLength());
+        String labelStyle =
+                "-fx-background-color: rgba(0,0,0,0.6); "
+                        + "-fx-text-fill: white; -fx-padding: 2 4 2 4; -fx-background-radius: 4;";
+        libLabel.setStyle(labelStyle);
+        colLabel.setStyle(labelStyle);
 
-        root.getChildren().add(stack);
-        barrasProgreso.put(nombre, barra);
+        // 5) Contenedor vertical para todo
+        VBox box = new VBox(2, img, barra, libLabel, colLabel);
+        box.setLayoutX(pos.getX());
+        box.setLayoutY(pos.getY());
+        box.setAlignment(Pos.CENTER);
 
-        return barra;
+        // 6) Guardamos referencias **una sola vez**
+        barrasProgreso .put(nombre, barra);
+        permisosLabels .put(nombre, libLabel);
+        colaLabels     .put(nombre, colLabel);
+        herramientaMap .put(nombre, herramienta);
+
+        // 7) Añadimos el box **una sola vez**
+        root.getChildren().add(box);
     }
+
+
 
     private void agregarCocinero(String nombre, Color color) {
         Circle cocinero = new Circle(15, color);
