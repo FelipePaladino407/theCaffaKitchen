@@ -128,7 +128,7 @@ public class InterfazFX extends Application {
         // Agregar pedidos al jefe con herramienta aleatoria y mostrar tarjetas
         String[] platos = {"Pizza", "Hamburguesa", "Taco", "Ensalada", "Pancho"};
         Random random = new Random();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 100; i++) {
             Pedido pedido = new Pedido(platos[random.nextInt(platos.length)],herramientas[random.nextInt(herramientas.length)], random.nextInt(1000,2000),i+1 );
             jefeCocina.agregarPedido(pedido);
         }
