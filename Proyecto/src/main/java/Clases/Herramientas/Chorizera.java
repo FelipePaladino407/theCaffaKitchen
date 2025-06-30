@@ -1,13 +1,20 @@
 package Clases.Herramientas;
 
-import Clases.Interfaz.InterfazVisualSingleton;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
+import javafx.scene.control.ProgressBar;
+import javafx.util.Duration;
 
 public class Chorizera extends Herramienta {
-    public Chorizera() {
-        super("Chorizera", 2);
+
+    public Chorizera(ProgressBar barra) {
+        super("Chorizera", 1, barra);
     }
+
     @Override
-    public void dibujarProceso() throws InterruptedException {
-        ejecutarProceso(8000);  // 8 segundos de duración
+    public void dibujarProceso(int duracionMs) throws InterruptedException {
+        super.dibujarProceso(duracionMs); // Usa la versión bloqueante
     }
+
 }

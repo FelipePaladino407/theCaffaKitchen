@@ -3,6 +3,7 @@ package Clases.Interfaz;
 import javax.swing.*;
 import java.awt.*;
 
+
 public class InterfazVisual {
     private final JFrame frame; //Es la ventana de la aplicación
     private final JTextArea logArea; //Tiene una muestra de registos, es básicamente una consola.
