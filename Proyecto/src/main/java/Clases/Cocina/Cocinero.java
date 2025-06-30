@@ -1,5 +1,10 @@
 package Clases.Cocina;
+import javafx.application.Platform;
+
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 
 
 public class Cocinero extends Thread {
@@ -7,6 +12,7 @@ public class Cocinero extends Thread {
     private final java.util.function.BiConsumer<String, Runnable> moverCallback;
     private final java.util.function.Consumer<String> actualizarEtiqueta;
     private final JefeCocina jefeCocina;
+    private MediaPlayer timbre;
 
     private volatile boolean ocupado = false;
     private Pedido pedidoActual;
@@ -19,6 +25,9 @@ public class Cocinero extends Thread {
         this.moverCallback = moverCallback;
         this.actualizarEtiqueta = actualizarEtiqueta;
         this.jefeCocina = jefeCocina;
+        String pathTimbre = getClass().getResource("/timbre.mp3").toExternalForm();
+        Media mediaTimbre = new Media(pathTimbre);
+        this.timbre = new MediaPlayer(mediaTimbre);
     }
 
     public synchronized boolean estaOcupado() {
@@ -52,6 +61,7 @@ public class Cocinero extends Thread {
             synchronized (this) {
                 pedidoActual = null;
                 ocupado = false;
+                actualizarEtiqueta.accept("Libre");
             }
 
             jefeCocina.notificarCocineroLibre(pedidoAProcesar);
@@ -75,6 +85,10 @@ public class Cocinero extends Thread {
             } finally {
                 pedido.getHerramienta().liberar();
             }
+            Platform.runLater(() -> {
+                timbre.stop();
+                timbre.play();
+            });
 
             // Paso 3: Ir a entregar
             CountDownLatch latch2 = new CountDownLatch(1);

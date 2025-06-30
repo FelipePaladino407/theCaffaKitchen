@@ -6,6 +6,7 @@ import Clases.Cocina.Pedido;
 import Clases.Herramientas.Horno;
 import Clases.Herramientas.Parrilla;
 import Clases.Herramientas.Herramienta;
+import Clases.Herramientas.Sarten;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -16,10 +17,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
-import javafx.geometry.Insets;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -27,23 +26,21 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 
 public class InterfazFX extends Application {
 
     private Pane root;
-    private static final int MAX_PEDIDOS_VISIBLES = 5;
     private final Queue<Pedido> colaPendientes = new LinkedList<>();
-    private final Map<Integer, PedidoCard> tarjetasVisibles = new HashMap<>();
 
 
     private final Map<String, Point2D> ubicaciones = Map.of(
-            "Horno", new Point2D(160,200),
-            "Parrilla", new Point2D(140, 300),
-            "Entrega", new Point2D(600, 300),
-            "Jefe", new Point2D(150, 300)
+            "Horno", new Point2D(260,420),
+            "Parrilla", new Point2D(230, 500),
+            "Entrega", new Point2D(860, 590),
+            "Jefe", new Point2D(860, 200),
+            "Sarten", new Point2D(300,305)
     );
 
     private final Map<String, StackPane> cocineros = new HashMap<>();
@@ -54,8 +51,11 @@ public class InterfazFX extends Application {
     private JefeCocina jefeCocina;
     private Horno horno;
     private Parrilla parrilla;
+    private Sarten sarten;
 
     private VBox contenedorPedidos;
+
+    private MediaPlayer timbre;
 
     @Override
     public void start(Stage primaryStage) {
@@ -69,24 +69,37 @@ public class InterfazFX extends Application {
 
         root = new Pane();
 
-        Image fondo = new Image("overccoked2.jpg");
+        Image fondo = new Image("overcooked3.png");
         ImageView fondoView = new ImageView(fondo);
-        fondoView.setFitWidth(800);
-        fondoView.setFitHeight(600);
+        fondoView.setFitWidth(1500);
+        fondoView.setFitHeight(900);
         root.getChildren().add(fondoView);
 
-        Circle marcadorEntrega = new Circle(650, 250, 10, Color.YELLOW);
-        root.getChildren().add(marcadorEntrega);
+        ImageView timbre= new ImageView("timbre.png");
+        timbre.setFitWidth(40);
+        timbre.setFitHeight(40);
+        timbre.setLayoutX(900);
+        timbre.setLayoutY(650);
+        root.getChildren().add(timbre);
 
-        ProgressBar barraHorno = agregarHerramienta("Horno", "horno.jpg");
-        ProgressBar barraParrilla = agregarHerramienta("Parrilla", "parrilla.png");
+        ImageView imgJefe= new ImageView("jefe2.png");
+        imgJefe.setFitWidth(100);
+        imgJefe.setFitHeight(120);
+        imgJefe.setLayoutX(1020);
+        imgJefe.setLayoutY(550);
+        root.getChildren().add(imgJefe);
+
+        ProgressBar barraHorno = agregarHerramienta("Horno");
+        ProgressBar barraParrilla = agregarHerramienta("Parrilla");
+        ProgressBar barraSarten= agregarHerramienta("Sarten");
 
         horno = new Horno(barraHorno);
         parrilla = new Parrilla(barraParrilla);
+        sarten= new Sarten(barraSarten);
 
-        agregarCocinero("Juan", Color.RED);
-        agregarCocinero("Ana", Color.BLUE);
-        agregarCocinero("Luis", Color.GREEN);
+        agregarCocinero("Juan");
+        agregarCocinero("Ana");
+        agregarCocinero("Luis");
 
         // Inicializar contenedorPedidos ANTES de agregar pedidos
         contenedorPedidos = new VBox(10); // espaciado horizontal de 10px
@@ -111,9 +124,9 @@ public class InterfazFX extends Application {
         cocinerosTemp.add(cocineroLuis);
 
         listaCocineros = cocinerosTemp;
-        Herramienta[] herramientas= {horno,parrilla};
+        Herramienta[] herramientas= {horno,parrilla,sarten};
         // Agregar pedidos al jefe con herramienta aleatoria y mostrar tarjetas
-        String[] platos = {"Pizza", "Hamburguesa", "Tacos", "Ensalada", "Pan de ajo"};
+        String[] platos = {"Pizza", "Hamburguesa", "Taco", "Ensalada", "Pancho"};
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
             Pedido pedido = new Pedido(platos[random.nextInt(platos.length)],herramientas[random.nextInt(herramientas.length)], random.nextInt(1000,2000),i+1 );
@@ -131,12 +144,12 @@ public class InterfazFX extends Application {
         primaryStage.show();
     }
 
-    private ProgressBar agregarHerramienta(String nombre, String rutaImagen) {
+    private ProgressBar agregarHerramienta(String nombre) {
         Point2D pos = ubicaciones.get(nombre);
 
         ProgressBar barra = new ProgressBar(0);
-        barra.setPrefWidth(64);
-        barra.setPrefHeight(10);
+        barra.setPrefWidth(80);
+        barra.setPrefHeight(20);
         barra.setStyle("-fx-accent: #ff4500;");
 
         // Como no queremos mostrar la imagen, sólo agregamos la barra directamente
@@ -151,11 +164,11 @@ public class InterfazFX extends Application {
     }
 
 
-    private void agregarCocinero(String nombre, Color color) {
+    private void agregarCocinero(String nombre) {
         Image imagenCocinero = new Image(nombre.toLowerCase() + ".png"); // Asegúrate que estos archivos existan en resources
         ImageView cocineroView = new ImageView(imagenCocinero);
-        cocineroView.setFitWidth(40); // Ajusta el tamaño según convenga
-        cocineroView.setFitHeight(60);
+        cocineroView.setFitWidth(70); // Ajusta el tamaño según convenga
+        cocineroView.setFitHeight(90);
 
         Label etiqueta = new Label("");
         etiqueta.setTranslateY(-30);
@@ -325,15 +338,6 @@ public class InterfazFX extends Application {
         }
     }
 
-
-    // Añade una tarjeta visual para un pedido
-    private void agregarTarjetaPedido(Pedido pedido) {
-        Image imagen = new Image("pizza.jpg"); // O el que corresponda
-        PedidoCard nuevaTarjeta = new PedidoCard(pedido.getNumeroPedido(), pedido.getNombre(), "pendiente", imagen);
-        contenedorPedidos.getChildren().add(nuevaTarjeta);
-        tarjetasVisibles.put(pedido.getNumeroPedido(), nuevaTarjeta);
-    }
-
     // Elimina la tarjeta y actualiza la lista visible para mostrar siguiente si hay
     public void eliminarPedido(int numeroPedido) {
         StackPane tarjetaAEliminar = null;
@@ -357,6 +361,7 @@ public class InterfazFX extends Application {
             }
         }
 
+
         if (tarjetaAEliminar != null) {
             contenedorPedidos.getChildren().remove(tarjetaAEliminar);
         }
@@ -365,6 +370,8 @@ public class InterfazFX extends Application {
             colaPendientes.removeIf(p -> p.getNumeroPedido() == numeroPedido);
             actualizarPedidosVisibles(new LinkedList<>(colaPendientes));
         }
+
+
     }
 
 
@@ -380,7 +387,7 @@ public class InterfazFX extends Application {
         tarjeta.setStyle("-fx-background-color: rgba(0, 0, 0, 0.7); -fx-background-radius: 10;");
 
         // Imagen (elige la que quieras, aquí ejemplo genérico)
-        ImageView imagen = new ImageView(new Image("pizza.jpg"));
+        ImageView imagen = new ImageView((getImagenPorNombre(pedido.getNombre())));
         imagen.setFitWidth(40);
         imagen.setFitHeight(40);
         imagen.setTranslateX(-70);
@@ -397,12 +404,12 @@ public class InterfazFX extends Application {
 
     private Image getImagenPorNombre(String nombre) {
         switch(nombre.toLowerCase()) {
-            case "pizza": return new Image("pizza.jpg");
-            case "hamburguesa": return new Image("pizza.jpg");
-            case "tacos": return new Image("pizza.jpg");
-            case "ensalada": return new Image("pizza.jpg");
-            case "pan de ajo": return new Image("pizza.jpg");
-            default: return new Image("pizza.jpg");
+            case "pizza": return new Image("pizzita.png");
+            case "hamburguesa": return new Image("hamburguesita.png");
+            case "tacos": return new Image("taquito.png");
+            case "ensalada": return new Image("ensaladita.png");
+            case "pancho": return new Image("panchito.png");
+            default: return new Image("pizzita.png");
         }
     }
 

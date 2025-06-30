@@ -72,33 +72,4 @@ public abstract class Herramienta implements IHerramienta {
         }
     }
 
-
-
-
-
-
-
-
-
-    /**
-     * Ejecuta la animación de la barra de progreso de forma asíncrona.
-     *
-     * @param barra     La ProgressBar a animar.
-     * @param duracionMs Duración en milisegundos del proceso.
-     * @param onFinished Callback que se ejecuta cuando termina la animación.
-     */
-    public void ejecutarProcesoConBarra(ProgressBar barra, int duracionMs, Runnable onFinished) {
-        Platform.runLater(() -> {
-            barra.setProgress(0);
-            Timeline timeline = new Timeline(
-                    new KeyFrame(Duration.ZERO, e -> barra.setProgress(0)),
-                    new KeyFrame(Duration.millis(duracionMs), e -> {
-                        barra.setProgress(1);
-                        if (onFinished != null) onFinished.run();
-                    })
-            );
-            timeline.setCycleCount(1);
-            timeline.play();
-        });
-    }
 }
