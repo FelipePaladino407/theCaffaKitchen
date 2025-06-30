@@ -37,8 +37,8 @@ public abstract class Herramienta implements IHerramienta {
      */
     @Override
     public void dibujarProceso(int duracionMs) throws InterruptedException {
-        final Object lock = new Object();  // Lock de espera
-        final boolean[] terminado = {false};  // Bandera de finalización
+        final Object lock = new Object();
+        final boolean[] terminado = {false};  // Flag de finalización
 
         Platform.runLater(() -> {
             progressBar.setProgress(0);

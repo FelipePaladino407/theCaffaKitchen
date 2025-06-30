@@ -83,7 +83,7 @@ public class Cocinero extends Thread {
             } finally {
                 pedido.getHerramienta().liberar();
             }
-            
+
             Platform.runLater(() -> timbre.play());
 
 
