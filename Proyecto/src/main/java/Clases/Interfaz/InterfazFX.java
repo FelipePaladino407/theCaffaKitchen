@@ -47,6 +47,9 @@ public class InterfazFX extends Application {
     private final Map<String, Label> colaLabels    = new HashMap<>();
     private final Map<String, Herramienta> herramientaMap = new HashMap<>();
 
+    private final Map<String, Label> statusLabels = new HashMap<>();
+
+    private FlowPane statusPane;
 
 
     private final Map<String, Point2D> ubicaciones = Map.of(
@@ -76,14 +79,33 @@ public class InterfazFX extends Application {
         mediaPlayer.setVolume(0.9); // Puedes cambiar el volumen
         mediaPlayer.play();
 
-
+        // ① inicializo el contenedor raíz ANTES
         root = new Pane();
+
+        // ② inicializo y posiciono la barra de estado
+        statusPane = new FlowPane();
+        statusPane.setHgap(20);
+        statusPane.setVgap(5);
+        statusPane.setLayoutX(10);
+        statusPane.setLayoutY(10);
+        root.getChildren().add(statusPane);
+
 
         Image fondo = new Image("overccoked2.jpg");
         ImageView fondoView = new ImageView(fondo);
         fondoView.setFitWidth(800);
         fondoView.setFitHeight(600);
         root.getChildren().add(fondoView);
+
+
+// ② inicializo y posiciono la barra de estado AHORA (por encima del fondo)
+        statusPane = new FlowPane();
+        statusPane.setHgap(20);
+        statusPane.setVgap(5);
+        statusPane.setLayoutX(10);
+        statusPane.setLayoutY(10);
+        root.getChildren().add(statusPane);
+
 
         Circle marcadorEntrega = new Circle(650, 250, 10, Color.YELLOW);
         root.getChildren().add(marcadorEntrega);
@@ -126,12 +148,27 @@ public class InterfazFX extends Application {
         listaCocineros = cocinerosTemp;
         Herramienta[] herramientas= {horno,parrilla};
         // Agregar pedidos al jefe con herramienta aleatoria y mostrar tarjetas
+        // -------------------- DESPUÉS --------------------
         String[] platos = {"Pizza", "Hamburguesa", "Tacos", "Ensalada", "Pan de ajo"};
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
-            Pedido pedido = new Pedido(platos[random.nextInt(platos.length)],herramientas[random.nextInt(herramientas.length)], random.nextInt(1000,2000),i+1 );
+            int tiempo;
+            if (i < 2) {
+                // Los dos primeros pedidos tardarán 6s, así siempre timeout (3s)
+                tiempo = 6000;
+            } else {
+                // El resto normales
+                tiempo = random.nextInt(1000, 2000);
+            }
+            Pedido pedido = new Pedido(
+                    platos[random.nextInt(platos.length)],
+                    herramientas[random.nextInt(herramientas.length)],
+                    tiempo,
+                    i+1
+            );
             jefeCocina.agregarPedido(pedido);
         }
+
 
         // Iniciar threads de cocineros
         for (Cocinero c : listaCocineros) {
@@ -143,11 +180,16 @@ public class InterfazFX extends Application {
         primaryStage.setTitle("Cocina estilo Overcooked");
         primaryStage.show();
 
+        // ④ Timeline que refresca SOLO statusLabels
         Timeline refresco = new Timeline(
                 new KeyFrame(Duration.ZERO, e -> {
-                    herramientaMap.forEach((n, h) -> {
-                        permisosLabels.get(n).setText("Libres: " + h.getPermitsAvailable());
-                        colaLabels   .get(n).setText("En cola: " + h.getQueueLength());
+                    statusLabels.forEach((nombre, lbl) -> {
+                        Herramienta h = herramientaMap.get(nombre);
+                        lbl.setText(
+                                nombre.toUpperCase()
+                                        + ": Libres: " + h.getPermitsAvailable()
+                                        + ", En cola: " + h.getQueueLength()
+                        );
                     });
                 }),
                 new KeyFrame(Duration.millis(500))
@@ -157,40 +199,38 @@ public class InterfazFX extends Application {
 
     }
 
-    private void agregarHerramienta(String nombre, String rutaImagen, Herramienta herramienta) {
-
+    private void agregarHerramienta(String nombre,
+                                    String rutaImagen,
+                                    Herramienta herramienta) {
+        // 1) Barra en la cocina
         Point2D pos = ubicaciones.get(nombre);
-        ImageView img = new ImageView(new Image(rutaImagen));
-        img.setFitWidth(64); img.setFitHeight(64);
-
         ProgressBar barra = new ProgressBar(0);
-
         barra.setPrefWidth(64);
         barra.setPrefHeight(10);
         barra.setStyle("-fx-accent: #ff4500;");
-
-        // Como no queremos mostrar la imagen, sólo agregamos la barra directamente
-
-        Label lib = new Label("Libres: " + herramienta.getPermitsAvailable());
-        Label col = new Label("En cola: " + herramienta.getQueueLength());
-        String ls = "-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: white; -fx-padding:4;";
-        lib.setStyle(ls); col.setStyle(ls);
-
-        // Apilo imagen, barra y etiquetas
-        VBox box = new VBox(4, barra, lib, col);
+        VBox box = new VBox(barra);
         box.setAlignment(Pos.CENTER);
         box.setLayoutX(pos.getX());
         box.setLayoutY(pos.getY());
-
         root.getChildren().add(box);
+
+        // 2) Etiqueta en la barra superior
+        Label estado = new Label(
+                nombre.toUpperCase()
+                        + ": Libres: " + herramienta.getPermitsAvailable()
+                        + ", En cola: " + herramienta.getQueueLength()
+        );
+        estado.setStyle(
+                "-fx-background-color: rgba(0,0,0,0.6);"
+                        + "-fx-text-fill: white; -fx-padding: 4;"
+        );
+        statusPane.getChildren().add(estado);
+        statusLabels.put(nombre, estado);
+
+        // 3) Guarda referencias
         barrasProgreso.put(nombre, barra);
-        permisosLabels.put(nombre, lib);
-        colaLabels   .put(nombre, col);
         herramientaMap.put(nombre, herramienta);
-
-
     }
-
 
     private void agregarCocinero(String nombre, Color color) {
         Image imagenCocinero = new Image(nombre.toLowerCase() + ".png"); // Asegúrate que estos archivos existan en resources
