@@ -6,20 +6,31 @@ import javafx.application.Platform;
 import javafx.scene.control.ProgressBar;
 import javafx.util.Duration;
 
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+
 public abstract class Herramienta implements IHerramienta {
     protected final String nombre;
-    protected final java.util.concurrent.Semaphore disponibilidad;
+    protected final Semaphore disponibilidad;
     protected final ProgressBar progressBar;
 
     public Herramienta(String nombre, int cantidadDisponible, ProgressBar progressBar) {
         this.nombre = nombre;
-        this.disponibilidad = new java.util.concurrent.Semaphore(cantidadDisponible);
+        /**
+         * Activo la propiedad fairness del semáforo
+         */
+        this.disponibilidad = new Semaphore(cantidadDisponible, true);
         this.progressBar = progressBar;
     }
 
     @Override
     public void pedir() throws InterruptedException {
         disponibilidad.acquire();
+    }
+
+    /** TimeOut. Devuelve false si expira sin permiso */
+    public boolean pedir(long timeout, TimeUnit unit) throws InterruptedException{
+        return disponibilidad.tryAcquire(timeout, unit);
     }
 
     @Override
@@ -30,6 +41,20 @@ public abstract class Herramienta implements IHerramienta {
     @Override
     public String getNombre() {
         return nombre;
+    }
+
+    /**
+     * Cuántos recursos hay libres en este momento
+     * Funciona de manera muy simple; basicamente enumera la disponibilidad de una herramienta
+     * Por ejemplo, cuantos hornos hay libres
+     */
+    public int getPermitsAvailable() {
+        return disponibilidad.availablePermits();
+    }
+
+    /** Cuántos hilos están esperando permiso ahora mismo */
+    public int getQueueLength() {
+        return disponibilidad.getQueueLength();
     }
 
     /**

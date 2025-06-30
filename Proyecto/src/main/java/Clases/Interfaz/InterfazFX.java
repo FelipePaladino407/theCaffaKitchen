@@ -6,11 +6,15 @@ import Clases.Cocina.Pedido;
 import Clases.Herramientas.Horno;
 import Clases.Herramientas.Parrilla;
 import Clases.Herramientas.Herramienta;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Point2D;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
@@ -37,6 +41,12 @@ public class InterfazFX extends Application {
     private static final int MAX_PEDIDOS_VISIBLES = 5;
     private final Queue<Pedido> colaPendientes = new LinkedList<>();
     private final Map<Integer, PedidoCard> tarjetasVisibles = new HashMap<>();
+
+    // Mapas para guardar las etiquetas y las herramientas
+    private final Map<String, Label> permisosLabels = new HashMap<>();
+    private final Map<String, Label> colaLabels    = new HashMap<>();
+    private final Map<String, Herramienta> herramientaMap = new HashMap<>();
+
 
 
     private final Map<String, Point2D> ubicaciones = Map.of(
@@ -78,11 +88,14 @@ public class InterfazFX extends Application {
         Circle marcadorEntrega = new Circle(650, 250, 10, Color.YELLOW);
         root.getChildren().add(marcadorEntrega);
 
-        ProgressBar barraHorno = agregarHerramienta("Horno", "horno.jpg");
-        ProgressBar barraParrilla = agregarHerramienta("Parrilla", "parrilla.png");
+        ProgressBar barraHorno    = new ProgressBar(0);
+        ProgressBar barraParrilla = new ProgressBar(0);
 
-        horno = new Horno(barraHorno);
+        horno    = new Horno(barraHorno);
         parrilla = new Parrilla(barraParrilla);
+
+        agregarHerramienta("Horno",    "horno.jpg",    horno);
+        agregarHerramienta("Parrilla", "parrilla.png", parrilla);
 
         agregarCocinero("Juan", Color.RED);
         agregarCocinero("Ana", Color.BLUE);
@@ -129,25 +142,53 @@ public class InterfazFX extends Application {
         primaryStage.setScene(scene);
         primaryStage.setTitle("Cocina estilo Overcooked");
         primaryStage.show();
+
+        Timeline refresco = new Timeline(
+                new KeyFrame(Duration.ZERO, e -> {
+                    herramientaMap.forEach((n, h) -> {
+                        permisosLabels.get(n).setText("Libres: " + h.getPermitsAvailable());
+                        colaLabels   .get(n).setText("En cola: " + h.getQueueLength());
+                    });
+                }),
+                new KeyFrame(Duration.millis(500))
+        );
+        refresco.setCycleCount(Animation.INDEFINITE);
+        refresco.play();
+
     }
 
-    private ProgressBar agregarHerramienta(String nombre, String rutaImagen) {
+    private void agregarHerramienta(String nombre, String rutaImagen, Herramienta herramienta) {
+
         Point2D pos = ubicaciones.get(nombre);
+        ImageView img = new ImageView(new Image(rutaImagen));
+        img.setFitWidth(64); img.setFitHeight(64);
 
         ProgressBar barra = new ProgressBar(0);
+
         barra.setPrefWidth(64);
         barra.setPrefHeight(10);
         barra.setStyle("-fx-accent: #ff4500;");
 
         // Como no queremos mostrar la imagen, sólo agregamos la barra directamente
-        StackPane stack = new StackPane(barra);
-        stack.setLayoutX(pos.getX());
-        stack.setLayoutY(pos.getY());
 
-        root.getChildren().add(stack);
+        Label lib = new Label("Libres: " + herramienta.getPermitsAvailable());
+        Label col = new Label("En cola: " + herramienta.getQueueLength());
+        String ls = "-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: white; -fx-padding:4;";
+        lib.setStyle(ls); col.setStyle(ls);
+
+        // Apilo imagen, barra y etiquetas
+        VBox box = new VBox(4, barra, lib, col);
+        box.setAlignment(Pos.CENTER);
+        box.setLayoutX(pos.getX());
+        box.setLayoutY(pos.getY());
+
+        root.getChildren().add(box);
         barrasProgreso.put(nombre, barra);
+        permisosLabels.put(nombre, lib);
+        colaLabels   .put(nombre, col);
+        herramientaMap.put(nombre, herramienta);
 
-        return barra;
+
     }
 
 
