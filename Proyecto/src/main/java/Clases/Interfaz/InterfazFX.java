@@ -469,7 +469,7 @@ public class InterfazFX extends Application {
         imagen.setTranslateX(-70);
 
         // Texto con nombre y número de pedido
-        // Ahora incluimos la herramienta entre corchetes
+        // Ahora incluyo la herramienta entre corchetes, ej: [pizza]
         String herramienta = pedido.getHerramienta().getNombre();
         Label texto = new Label(
                 "#" + pedido.getNumeroPedido()

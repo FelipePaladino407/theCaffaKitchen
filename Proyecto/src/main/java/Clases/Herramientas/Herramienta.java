@@ -56,7 +56,7 @@ public abstract class Herramienta implements IHerramienta {
     @Override
     public void dibujarProceso(int duracionMs) throws InterruptedException {
         final Object lock = new Object();
-        final boolean[] terminado = {false};  // Flag de finalización
+        final boolean[] terminado = {false};  // Flag de finali[ppppppppppppppppppp./;ujjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjzación
 
         Platform.runLater(() -> {
             progressBar.setProgress(0);
@@ -83,7 +83,7 @@ public abstract class Herramienta implements IHerramienta {
             timeline.play();
         });
 
-        synchronized (lock) {
+        synchronized (lock) {  // Hola ke ase
             while (!terminado[0]) {
                 lock.wait();  // Esperamos hasta que se termine la animación
             }
