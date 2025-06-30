@@ -7,6 +7,9 @@ import Clases.Herramientas.Horno;
 import Clases.Herramientas.Parrilla;
 import Clases.Herramientas.Herramienta;
 import Clases.Herramientas.Sarten;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -17,6 +20,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -34,18 +38,24 @@ public class InterfazFX extends Application {
     private Pane root;
     private final Queue<Pedido> colaPendientes = new LinkedList<>();
 
+    // Nuevo
+    private FlowPane statusPane;
+
+
+    private final Map<String, Herramienta> herramientaMap = new HashMap<>();
+    private final Map<String, Label> libresLabels = new HashMap<>();
+    private final Map<String, Label> colaLabels = new HashMap<>();
+    private final Map<String, ProgressBar> barrasProgreso = new HashMap<>();
+    private final Map<String, StackPane> cocineros = new HashMap<>();
+    private final Map<String, Label> etiquetasPedidos = new HashMap<>();
 
     private final Map<String, Point2D> ubicaciones = Map.of(
             "Horno", new Point2D(260,420),
-            "Parrilla", new Point2D(230, 500),
-            "Entrega", new Point2D(860, 590),
-            "Jefe", new Point2D(860, 200),
-            "Sarten", new Point2D(300,305)
+            "Parrilla", new Point2D(230,500),
+            "Sarten", new Point2D(300,305),
+            "Jefe", new Point2D(860,200),
+            "Entrega", new Point2D(860,590)
     );
-
-    private final Map<String, StackPane> cocineros = new HashMap<>();
-    private final Map<String, Label> etiquetasPedidos = new HashMap<>();
-    private final Map<String, ProgressBar> barrasProgreso = new HashMap<>();
 
     private List<Cocinero> listaCocineros;
     private JefeCocina jefeCocina;
@@ -69,11 +79,20 @@ public class InterfazFX extends Application {
 
         root = new Pane();
 
+        // Status pane
+        statusPane = new FlowPane();
+        statusPane.setHgap(20);
+        statusPane.setVgap(5);
+        statusPane.setLayoutX(10);
+        statusPane.setLayoutY(10);
+
         Image fondo = new Image("overcooked3.png");
         ImageView fondoView = new ImageView(fondo);
         fondoView.setFitWidth(1500);
         fondoView.setFitHeight(900);
         root.getChildren().add(fondoView);
+
+        root.getChildren().add(statusPane);
 
         ImageView timbre= new ImageView("timbre.png");
         timbre.setFitWidth(40);
@@ -89,13 +108,18 @@ public class InterfazFX extends Application {
         imgJefe.setLayoutY(550);
         root.getChildren().add(imgJefe);
 
-        ProgressBar barraHorno = agregarHerramienta("Horno");
+        ProgressBar barraHorno    = agregarHerramienta("Horno");
         ProgressBar barraParrilla = agregarHerramienta("Parrilla");
-        ProgressBar barraSarten= agregarHerramienta("Sarten");
+        ProgressBar barraSarten   = agregarHerramienta("Sarten");
 
-        horno = new Horno(barraHorno);
+        // CREA UNA SOLA VEZ cada herramienta y la registra:
+        horno    = new Horno(barraHorno);
         parrilla = new Parrilla(barraParrilla);
-        sarten= new Sarten(barraSarten);
+        sarten   = new Sarten(barraSarten);
+
+        herramientaMap.put("Horno", horno);
+        herramientaMap.put("Parrilla", parrilla);
+        herramientaMap.put("Sarten", sarten);
 
         agregarCocinero("Juan");
         agregarCocinero("Ana");
@@ -127,10 +151,27 @@ public class InterfazFX extends Application {
         Herramienta[] herramientas= {horno,parrilla,sarten};
         // Agregar pedidos al jefe con herramienta aleatoria y mostrar tarjetas
         String[] platos = {"Pizza", "Hamburguesa", "Taco", "Ensalada", "Pancho"};
-        Random random = new Random();
-        for (int i = 0; i < 100; i++) {
-            Pedido pedido = new Pedido(platos[random.nextInt(platos.length)],herramientas[random.nextInt(herramientas.length)], random.nextInt(1000,2000),i+1 );
-            jefeCocina.agregarPedido(pedido);
+
+// 2) Creamos sólo 10 pedidos de prueba:
+        Random rnd = new Random();
+        for (int i = 0; i < 10; i++) {
+            // Para probar: los dos primeros van al mismo Horno y tardan 12 s,
+            // de modo que el segundo siempre muera por timeout antes de poder entrar.
+            Herramienta herramienta = (i < 2)
+                    ? horno
+                    : herramientas[rnd.nextInt(herramientas.length)];
+
+            long tiempo = (i < 2)
+                    ? 12_000
+                    : rnd.nextInt(1_000, 2_000);
+
+            Pedido p = new Pedido(
+                    platos[rnd.nextInt(platos.length)],
+                    herramienta,
+                    (int) tiempo,
+                    i + 1
+            );
+            jefeCocina.agregarPedido(p);
         }
 
         // Iniciar threads de cocineros
@@ -142,26 +183,52 @@ public class InterfazFX extends Application {
         primaryStage.setScene(scene);
         primaryStage.setTitle("Cocina estilo Overcooked");
         primaryStage.show();
+
+        Timeline refresco = new Timeline(
+                new KeyFrame(Duration.ZERO, e -> {
+                    herramientaMap.forEach((nombre, herr) -> {
+                        libresLabels.get(nombre)
+                                .setText("Libres: " + herr.getPermitsAvailable());
+                        colaLabels .get(nombre)
+                                .setText("En cola: "  + herr.getQueueLength());
+                    });
+                }),
+                new KeyFrame(Duration.millis(500))
+        );
+        refresco.setCycleCount(Animation.INDEFINITE);
+        refresco.play();
     }
 
     private ProgressBar agregarHerramienta(String nombre) {
         Point2D pos = ubicaciones.get(nombre);
 
+        // 1) Barra
         ProgressBar barra = new ProgressBar(0);
-        barra.setPrefWidth(80);
-        barra.setPrefHeight(20);
+        barra.setPrefSize(80, 20);
         barra.setStyle("-fx-accent: #ff4500;");
-
-        // Como no queremos mostrar la imagen, sólo agregamos la barra directamente
         StackPane stack = new StackPane(barra);
         stack.setLayoutX(pos.getX());
         stack.setLayoutY(pos.getY());
-
         root.getChildren().add(stack);
         barrasProgreso.put(nombre, barra);
 
+        // 2) Labels estado “Libres” y “En cola”
+        Label lblLibres = new Label("Libres: 0");
+        Label lblCola   = new Label("En cola: 0");
+        String style = "-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: white; -fx-padding:4;";
+        lblLibres.setStyle(style);
+        lblCola.setStyle(style);
+
+        statusPane.getChildren().addAll(
+                new Label(nombre + ":"), lblLibres, lblCola
+        );
+        libresLabels.put(nombre, lblLibres);
+        colaLabels .put(nombre, lblCola);
+
+        // 3) Dejamos la barra lista y devolvemos
         return barra;
     }
+
 
 
     private void agregarCocinero(String nombre) {
@@ -192,10 +259,19 @@ public class InterfazFX extends Application {
             Label etiqueta = etiquetasPedidos.get(nombreCocinero);
             if (etiqueta != null) {
                 etiqueta.setText(texto);
+
+                if (texto.contains("cancelado")) {
+                    // Haz que suene el timbre (asegúrate de haber inicializado timbre en start())
+                    timbre.stop();
+                    timbre.play();
+
+                    // (opcional) quita la tarjeta de la UI
+                    int num = Integer.parseInt(texto.replaceAll(".*#(\\d+).*", "$1"));
+                    eliminarPedido(num);
+                }
             }
         });
     }
-
     private void moverCocinero(String nombre, String destino, Runnable onFinish) {
         StackPane stack = cocineros.get(nombre);
         Point2D objetivo = ubicaciones.get(destino);
@@ -393,7 +469,15 @@ public class InterfazFX extends Application {
         imagen.setTranslateX(-70);
 
         // Texto con nombre y número de pedido
-        Label texto = new Label("#" + pedido.getNumeroPedido() + " - " + pedido.getNombre());
+        // Ahora incluimos la herramienta entre corchetes
+        String herramienta = pedido.getHerramienta().getNombre();
+        Label texto = new Label(
+                "#" + pedido.getNumeroPedido()
+                        + " - " + pedido.getNombre()
+                        + " [" + herramienta + "]"
+        );
+
+
         texto.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
 
         tarjeta.getChildren().addAll(imagen, texto);

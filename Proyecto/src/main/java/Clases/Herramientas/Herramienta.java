@@ -6,6 +6,9 @@ import javafx.application.Platform;
 import javafx.scene.control.ProgressBar;
 import javafx.util.Duration;
 
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+
 public abstract class Herramienta implements IHerramienta {
     protected final String nombre;
     protected final java.util.concurrent.Semaphore disponibilidad;
@@ -13,13 +16,20 @@ public abstract class Herramienta implements IHerramienta {
 
     public Herramienta(String nombre, int cantidadDisponible, ProgressBar progressBar) {
         this.nombre = nombre;
-        this.disponibilidad = new java.util.concurrent.Semaphore(cantidadDisponible);
+
+        // Semáforo con "justicia" digamos:
+        this.disponibilidad = new Semaphore(cantidadDisponible, true);
         this.progressBar = progressBar;
     }
 
     @Override
     public void pedir() throws InterruptedException {
         disponibilidad.acquire();
+    }
+
+    // NUEVO NUEVO. Espera con timeout, devuelve false si expira:
+    public boolean pedir(long timeout, TimeUnit unit) throws InterruptedException {
+        return disponibilidad.tryAcquire(timeout, unit);
     }
 
     @Override
@@ -30,6 +40,14 @@ public abstract class Herramienta implements IHerramienta {
     @Override
     public String getNombre() {
         return nombre;
+    }
+
+    public int getPermitsAvailable(){
+        return disponibilidad.availablePermits();
+    }
+
+    public int getQueueLength(){
+        return disponibilidad.getQueueLength();
     }
 
     /**

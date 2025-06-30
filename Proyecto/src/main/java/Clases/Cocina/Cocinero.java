@@ -2,6 +2,8 @@ package Clases.Cocina;
 import javafx.application.Platform;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import javafx.scene.media.AudioClip;
 
@@ -15,8 +17,12 @@ public class Cocinero extends Thread {
             Cocinero.class.getResource("/timbre.mp3").toExternalForm()
     );
 
+    private final Semaphore pedidoSem = new Semaphore(0, true);
+
     private volatile boolean ocupado = false;
     private Pedido pedidoActual;
+
+    private boolean cancelado = false;
 
     public Cocinero(String nombre,
                     java.util.function.BiConsumer<String, Runnable> moverCallback,
@@ -32,72 +38,71 @@ public class Cocinero extends Thread {
         return ocupado;
     }
 
-    public synchronized void asignarPedido(Pedido pedido) {
+    public void asignarPedido(Pedido pedido) {
         this.pedidoActual = pedido;
         this.ocupado = true;
-        notify();  // Despierta al cocinero si está esperando
+        pedidoSem.release();
     }
 
     @Override
     public void run() {
         while (true) {
-            Pedido pedidoAProcesar;
-
-            synchronized (this) {
-                while (pedidoActual == null) {
-                    try {
-                        wait();
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-                }
-                pedidoAProcesar = pedidoActual;
+            try {
+                pedidoSem.acquire();  // Aca espera hasta realese() en asignarPedido.
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
             }
-
-            procesarPedido(pedidoAProcesar);
-
-            synchronized (this) {
+            Pedido p;
+            synchronized(this) { p = pedidoActual; }
+            procesarPedido(p);
+            synchronized(this) {
                 pedidoActual = null;
                 ocupado = false;
-                actualizarEtiqueta.accept("Libre");
+                if (!cancelado) {
+                    actualizarEtiqueta.accept("Libre");
+                }
+                cancelado = false;
             }
-
-            jefeCocina.notificarCocineroLibre(pedidoAProcesar);
+            jefeCocina.notificarCocineroLibre(p);
         }
     }
 
     private void procesarPedido(Pedido pedido) {
         try {
-            // Paso 1: Ir del cocinero al jefe y luego a la herramienta
-            CountDownLatch latch1 = new CountDownLatch(1);
-            moverCallback.accept(nombre + "-Jefe->" + nombre + "-" + pedido.getHerramienta().getNombre(), () -> {
-                actualizarEtiqueta.accept("Preparando " + pedido.getNombre());
-                latch1.countDown();
-            });
-            latch1.await(); // Esperar a que termine el movimiento
+            // 1) mover al jefe→herramienta
+            CountDownLatch l1 = new CountDownLatch(1);
+            moverCallback.accept(
+                    nombre + "-Jefe->" + nombre + "-" + pedido.getHerramienta().getNombre(),
+                    () -> { actualizarEtiqueta.accept("Preparando " + pedido.getNombre()); l1.countDown(); }
+            );
+            l1.await();
 
-            // Paso 2: Usar herramienta
-            pedido.getHerramienta().pedir();
+            // pedir con TIMEOUT
+            boolean ok = pedido.getHerramienta().pedir(3, TimeUnit.SECONDS);
+            if (!ok) {
+                actualizarEtiqueta.accept("Cliente impaciente: cancelado " + pedido.getNombre());
+                this.cancelado = true;
+                return;
+            }
             try {
                 pedido.getHerramienta().dibujarProceso(pedido.getTiempo());
             } finally {
                 pedido.getHerramienta().liberar();
             }
 
-            Platform.runLater(() -> timbre.play());
+            Platform.runLater(() -> {timbre.play();});
 
-
-            // Paso 3: Ir a entregar
-            CountDownLatch latch2 = new CountDownLatch(1);
-            moverCallback.accept(nombre + "-" + pedido.getHerramienta().getNombre() + "->" + nombre + "-Entrega", () -> {
-                actualizarEtiqueta.accept("Entregado " + pedido.getNombre());
-                latch2.countDown();
-            });
-            latch2.await();
+            // muevo: herramienta → entrega
+            CountDownLatch l2 = new CountDownLatch(1);
+            moverCallback.accept(
+                    nombre + "-" + pedido.getHerramienta().getNombre() + "->" + nombre + "-Entrega",
+                    () -> { actualizarEtiqueta.accept("Entregado " + pedido.getNombre()); l2.countDown(); }
+            );
+            l2.await();
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
-
 }
