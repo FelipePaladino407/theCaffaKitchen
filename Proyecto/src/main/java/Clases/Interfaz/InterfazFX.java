@@ -41,6 +41,9 @@ public class InterfazFX extends Application {
     // Nuevo
     private FlowPane statusPane;
 
+    /** Para representar los estados de los recursos (disponibles y procesos en cola)*/
+    private Label statusLabel;
+
 
     private final Map<String, Herramienta> herramientaMap = new HashMap<>();
     private final Map<String, Label> libresLabels = new HashMap<>();
@@ -93,6 +96,13 @@ public class InterfazFX extends Application {
         root.getChildren().add(fondoView);
 
         root.getChildren().add(statusPane);
+
+        statusLabel = new Label();
+        statusLabel.setStyle("-fx-background-color: rgba(0,0,0,0.6);"
+                + "-fx-text-fill: white; -fx-padding:4;");
+        statusLabel.setLayoutX(10);
+        statusLabel.setLayoutY(10);
+        root.getChildren().add(statusLabel);
 
         ImageView timbre= new ImageView("timbre.png");
         timbre.setFitWidth(40);
@@ -152,10 +162,10 @@ public class InterfazFX extends Application {
         // Agregar pedidos al jefe con herramienta aleatoria y mostrar tarjetas
         String[] platos = {"Pizza", "Hamburguesa", "Taco", "Ensalada", "Pancho"};
 
-// 2) Creamos sólo 10 pedidos de prueba:
+
         Random rnd = new Random();
-        for (int i = 0; i < 10; i++) {
-            // Para probar: los dos primeros van al mismo Horno y tardan 12 s,
+        for (int i = 0; i < 25; i++) {
+            // Para probar: los dos primeros van al mismo Horno y tardan 12 segundos,
             // de modo que el segundo siempre muera por timeout antes de poder entrar.
             Herramienta herramienta = (i < 2)
                     ? horno
@@ -163,7 +173,7 @@ public class InterfazFX extends Application {
 
             long tiempo = (i < 2)
                     ? 12_000
-                    : rnd.nextInt(1_000, 2_000);
+                    : rnd.nextInt(2_000, 7_000);
 
             Pedido p = new Pedido(
                     platos[rnd.nextInt(platos.length)],
@@ -186,12 +196,15 @@ public class InterfazFX extends Application {
 
         Timeline refresco = new Timeline(
                 new KeyFrame(Duration.ZERO, e -> {
+                    StringBuilder sb = new StringBuilder();
                     herramientaMap.forEach((nombre, herr) -> {
-                        libresLabels.get(nombre)
-                                .setText("Libres: " + herr.getPermitsAvailable());
-                        colaLabels .get(nombre)
-                                .setText("En cola: "  + herr.getQueueLength());
+                        sb.append(String.format("%s: Libres: %d En cola: %d   ",
+
+                                /** Aca uso los metodos de la clase Herramienta*/
+                                nombre, herr.getPermitsAvailable(), herr.getQueueLength()
+                        ));
                     });
+                    statusLabel.setText(sb.toString());
                 }),
                 new KeyFrame(Duration.millis(500))
         );
@@ -212,20 +225,7 @@ public class InterfazFX extends Application {
         root.getChildren().add(stack);
         barrasProgreso.put(nombre, barra);
 
-        // 2) Labels estado “Libres” y “En cola”
-        Label lblLibres = new Label("Libres: 0");
-        Label lblCola   = new Label("En cola: 0");
-        String style = "-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: white; -fx-padding:4;";
-        lblLibres.setStyle(style);
-        lblCola.setStyle(style);
 
-        statusPane.getChildren().addAll(
-                new Label(nombre + ":"), lblLibres, lblCola
-        );
-        libresLabels.put(nombre, lblLibres);
-        colaLabels .put(nombre, lblCola);
-
-        // 3) Dejamos la barra lista y devolvemos
         return barra;
     }
 
@@ -490,7 +490,7 @@ public class InterfazFX extends Application {
         switch(nombre.toLowerCase()) {
             case "pizza": return new Image("pizzita.png");
             case "hamburguesa": return new Image("hamburguesita.png");
-            case "tacos": return new Image("taquito.png");
+            case "taco": return new Image("taquito.png");
             case "ensalada": return new Image("ensaladita.png");
             case "pancho": return new Image("panchito.png");
             default: return new Image("pizzita.png");
